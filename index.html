@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bore Nahi — Online Room (Firebase)</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --pink:#FF3E7F; --purple:#4A1D6E; --purple-deep:#2E0F47;
+    --yellow:#FFC93C; --teal:#0FD9B8; --cream:#FFF6EC; --ink:#1A0F2B;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background: radial-gradient(circle at 20% 0%, #5A2685 0%, var(--purple-deep) 55%, var(--ink) 100%);
+    font-family:'Manrope', 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif; color:var(--cream);
+    min-height:100vh; padding:20px 16px 40px;
+  }
+  .wrap{ max-width:480px; margin:0 auto; }
+  header{ text-align:center; margin-bottom:20px; }
+  header h1{
+    font-family:'Baloo 2', 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif; font-weight:800; font-size:1.8rem;
+    color:var(--yellow); text-shadow:3px 3px 0 var(--pink);
+  }
+  header p{ margin-top:8px; font-size:0.9rem; color:#E8D9FF; }
+  .card{
+    background:linear-gradient(155deg, rgba(255,255,255,0.09), rgba(255,255,255,0.03));
+    border:1.5px solid rgba(255,255,255,0.14); border-radius:22px; padding:24px 20px;
+  }
+  .btn{
+    font-family:'Baloo 2', 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif; font-weight:700; font-size:1rem;
+    padding:13px 26px; border-radius:14px; border:none; background:var(--pink);
+    color:white; cursor:pointer; box-shadow:0 5px 0 #C31C5C; transition:transform .08s;
+    width:100%;
+  }
+  .btn:active{ transform:translateY(4px); box-shadow:0 1px 0 #C31C5C; }
+  .btn.alt{ background:var(--teal); box-shadow:0 5px 0 #0A9E85; }
+  .btn.alt:active{ box-shadow:0 1px 0 #0A9E85; }
+  .btn.small{ width:auto; padding:10px 16px; font-size:0.85rem; }
+  input{
+    width:100%; padding:13px 14px; border-radius:12px; border:2px solid rgba(255,255,255,0.2);
+    background:rgba(255,255,255,0.07); color:var(--cream); font-size:1rem; margin-bottom:12px;
+    font-family:'Manrope', 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
+  }
+  input::placeholder{ color:#B9A7D6; }
+  label{ font-size:0.85rem; color:#E8D9FF; display:block; margin-bottom:6px; font-weight:600; }
+  .code-display{
+    font-family:'Baloo 2', 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif; font-size:1.8rem; letter-spacing:4px;
+    text-align:center; color:var(--yellow); background:rgba(0,0,0,0.2);
+    border-radius:14px; padding:14px; margin-bottom:14px; font-weight:700;
+  }
+  .hint{ font-size:0.8rem; color:#C9B8E8; text-align:center; margin-top:10px; line-height:1.5; }
+  .divider{ text-align:center; color:#8A6FB0; font-size:0.8rem; margin:16px 0; font-weight:600; }
+
+  .tabs{ display:flex; gap:8px; overflow-x:auto; padding-bottom:6px; margin-bottom:18px; scrollbar-width:none; }
+  .tabs::-webkit-scrollbar{ display:none; }
+  .tab{
+    flex:0 0 auto; padding:10px 16px; border-radius:999px; background:rgba(255,255,255,0.08);
+    border:2px solid rgba(255,255,255,0.15); color:var(--cream); font-family:'Baloo 2', 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
+    font-weight:600; font-size:0.9rem; cursor:pointer; white-space:nowrap;
+  }
+  .tab.active{ background:var(--pink); border-color:var(--pink); color:white; }
+  .panel{ display:none; } .panel.active{ display:block; }
+
+  .room-banner{
+    display:flex; justify-content:space-between; align-items:center;
+    background:rgba(255,255,255,0.06); border-radius:14px; padding:10px 14px; margin-bottom:16px;
+    font-size:0.85rem;
+  }
+  .room-banner b{ color:var(--yellow); font-family:'Baloo 2', 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji'; letter-spacing:2px; }
+  .status-dot{ width:8px; height:8px; border-radius:50%; background:var(--teal); display:inline-block; margin-right:6px; }
+
+  .turn-label{ font-family:'Baloo 2', 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif; font-weight:700; color:var(--teal); margin-bottom:10px; text-align:center; }
+  .board{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; width:240px; margin:0 auto 16px; }
+  .cell{
+    aspect-ratio:1; background:rgba(255,255,255,0.08); border:2px solid rgba(255,255,255,0.16);
+    border-radius:12px; display:flex; align-items:center; justify-content:center;
+    font-family:'Baloo 2', 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji'; font-size:2rem; font-weight:800; cursor:pointer; color:var(--yellow);
+  }
+  .cell.disabled{ opacity:0.6; cursor:default; }
+  .score-row{ display:flex; justify-content:center; gap:24px; margin-top:6px; font-size:0.85rem; color:#E8D9FF; font-weight:600; }
+
+  .quick-actions{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:16px; }
+  .qbtn{
+    padding:12px 4px; border-radius:12px; border:2px solid rgba(255,255,255,0.14);
+    background:rgba(255,255,255,0.06); color:var(--cream); font-size:0.8rem; font-weight:700;
+    font-family:'Baloo 2', 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji'; cursor:pointer;
+  }
+  .feed{
+    max-height:280px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; margin-bottom:14px;
+  }
+  .feed-msg{
+    padding:10px 14px; border-radius:14px; font-size:0.92rem; line-height:1.4; max-width:85%;
+  }
+  .feed-msg.mine{ background:var(--pink); align-self:flex-end; color:white; border-bottom-right-radius:4px; }
+  .feed-msg.theirs{ background:rgba(255,255,255,0.1); align-self:flex-start; border-bottom-left-radius:4px; }
+  .feed-msg .sender{ font-size:0.7rem; opacity:0.75; margin-bottom:2px; font-weight:700; }
+  .send-row{ display:flex; gap:8px; }
+  .send-row input{ margin-bottom:0; }
+  .empty-feed{ text-align:center; color:#8A6FB0; font-size:0.85rem; padding:20px 0; }
+
+  /* AVATAR PICKER */
+  .avatar-grid{
+    display:grid; grid-template-columns:repeat(6,1fr); gap:8px; margin-bottom:14px;
+  }
+  .avatar-opt{
+    aspect-ratio:1; border-radius:12px; background:rgba(255,255,255,0.06);
+    border:2px solid rgba(255,255,255,0.15); display:flex; align-items:center; justify-content:center;
+    font-size:1.4rem; cursor:pointer;
+  }
+  .avatar-opt.selected{ background:var(--yellow); border-color:var(--yellow); }
+
+  /* PROFILE CARDS */
+  .profile-row{ display:flex; gap:10px; margin-bottom:16px; }
+  .profile-card{
+    flex:1; background:rgba(255,255,255,0.07); border-radius:14px; padding:10px;
+    text-align:center; border:2px solid rgba(255,255,255,0.12);
+  }
+  .profile-card .av{ font-size:1.6rem; margin-bottom:4px; }
+  .profile-card .nm{ font-family:'Baloo 2', 'Noto Color Emoji', sans-serif; font-weight:700; font-size:0.88rem; color:var(--cream); }
+  .profile-card .st{ font-size:0.72rem; color:#C9B8E8; margin-top:2px; line-height:1.3; }
+  .profile-card.me{ border-color:var(--yellow); }
+
+  .edit-profile-box{
+    background:rgba(0,0,0,0.2); border-radius:14px; padding:14px; margin-bottom:16px; display:none;
+  }
+  .edit-profile-box.open{ display:block; }
+
+  /* CHAT (separate from activity feed, same bubble look) */
+  .chat-msg .sender{ font-size:0.7rem; opacity:0.75; margin-bottom:2px; font-weight:700; }
+  .chat-msg audio{ width:200px; max-width:100%; height:34px; margin-top:2px; }
+  #micBtn.recording{ background:var(--pink); box-shadow:0 5px 0 #C31C5C; animation:pulseRec 1s infinite; }
+  @keyframes pulseRec{ 0%,100%{opacity:1;} 50%{opacity:0.6;} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Bore Nahi — Online Room</h1>
+    <p>Dur baithke bhi saath khelo, real-time mein</p>
+  </header>
+
+  <!-- LOBBY -->
+  <div id="lobby">
+    <div class="card">
+      <label>Tumhara naam</label>
+      <input id="nameInput" placeholder="Apna naam likho" maxlength="14">
+
+      <label>Apna avatar chuno</label>
+      <div class="avatar-grid" id="avatarGrid"></div>
+
+      <label>Status (optional)</label>
+      <input id="statusInput" placeholder="Jaise: Bore ho rahi hoon 😩" maxlength="40">
+
+      <div class="divider">— NAYA ROOM BANAO —</div>
+      <button class="btn" id="createRoomBtn">Room Banao</button>
+
+      <div class="divider">— YA PURANE ROOM MEIN JAO —</div>
+      <input id="joinCodeInput" placeholder="Room code daalo (jaise BORE42)" maxlength="8" style="text-transform:uppercase;">
+      <button class="btn alt" id="joinRoomBtn">Room Join Karo</button>
+
+      <p class="hint">Ek friend room banaye, wahi code dusri ko bheje (WhatsApp pe). Dono isi artifact ke link se yahan aayein tab hi sync hoga.</p>
+    </div>
+  </div>
+
+  <!-- ROOM -->
+  <div id="roomView" style="display:none;">
+    <div class="room-banner">
+      <span><span class="status-dot"></span>Room: <b id="roomCodeDisplay"></b></span>
+      <button class="btn small alt" id="leaveBtn">Chhodo</button>
+    </div>
+
+    <div class="profile-row" id="profileRow"></div>
+    <button class="btn small alt" id="editProfileToggle" style="margin-bottom:12px; width:100%;">✏️ Apna Profile Edit Karo</button>
+    <div class="edit-profile-box" id="editProfileBox">
+      <label>Avatar</label>
+      <div class="avatar-grid" id="avatarGridEdit"></div>
+      <label>Status</label>
+      <input id="statusInputEdit" placeholder="Naya status likho" maxlength="40">
+      <button class="btn small" id="saveProfileBtn">Save Karo</button>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="ttt">❌⭕ Tic Tac Toe</button>
+      <button class="tab" data-tab="chat">💬 Chat</button>
+      <button class="tab" data-tab="feed">🎉 Activity Feed</button>
+    </div>
+
+    <div class="panel active" id="panel-ttt">
+      <div class="card">
+        <div class="turn-label" id="tttStatus">Load ho raha hai...</div>
+        <div class="board" id="board"></div>
+        <button class="btn alt" id="resetGame">Naya Game</button>
+        <div class="score-row">
+          <span id="p1ScoreLabel">P1: 0</span>
+          <span id="p2ScoreLabel">P2: 0</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-chat">
+      <div class="card">
+        <div class="feed" id="chatList"><div class="empty-feed">Abhi koi message nahi hai — hi bolo!</div></div>
+        <div id="recIndicator" style="display:none; text-align:center; color:var(--pink); font-weight:700; font-size:0.85rem; margin-bottom:8px;">🔴 Recording... (max 20 sec) — dubara tap karke roko</div>
+        <div class="send-row">
+          <input id="chatInput" placeholder="Message likho...">
+          <button class="btn small alt" id="micBtn" style="flex:0 0 auto;">🎤</button>
+          <button class="btn small" id="sendChatBtn" style="flex:0 0 auto;">Bhejo</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-feed">
+      <div class="card">
+        <div class="quick-actions">
+          <button class="qbtn" id="qWheel">🎡 Activity</button>
+          <button class="qbtn" id="qTruth">😇 Truth</button>
+          <button class="qbtn" id="qDare">😈 Dare</button>
+          <button class="qbtn" id="qMood">💭 Mood</button>
+          <button class="qbtn" id="qCompliment">💌 Compliment</button>
+          <button class="qbtn" id="qRefresh">🔄 Refresh</button>
+        </div>
+        <div class="feed" id="feedList"><div class="empty-feed">Abhi koi message nahi hai</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyD-uxBcV3cbgoHwIWrQIT7l9NOJKRuoGAU",
+  authDomain: "bore-nahi.firebaseapp.com",
+  databaseURL: "https://bore-nahi-default-rtdb.firebaseio.com",
+  projectId: "bore-nahi",
+  storageBucket: "bore-nahi.firebasestorage.app",
+  messagingSenderId: "90017904326",
+  appId: "1:90017904326:web:30f05ed7a3d9dca0a049c7",
+  measurementId: "G-25XME3XPMC"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+const AVATARS = ['🐱','🐶','🦊','🐼','🐰','🦄','🐸','🐨','🦁','🐷','🐵','🦋'];
+let myAvatar = AVATARS[0];
+let myName = '';
+let myStatus = '';
+let roomCode = '';
+let myRole = null; // 'p1' or 'p2'
+let pollTimer = null;
+
+function buildAvatarGrid(containerId, onPick){
+  const grid = document.getElementById(containerId);
+  grid.innerHTML = '';
+  AVATARS.forEach(av=>{
+    const el = document.createElement('div');
+    el.className = 'avatar-opt' + (av===myAvatar ? ' selected' : '');
+    el.textContent = av;
+    el.addEventListener('click', ()=>{
+      myAvatar = av;
+      grid.querySelectorAll('.avatar-opt').forEach(o=>o.classList.remove('selected'));
+      el.classList.add('selected');
+      if(onPick) onPick(av);
+    });
+    grid.appendChild(el);
+  });
+}
+buildAvatarGrid('avatarGrid');
+
+
+const activities = ["Dono milke ek reel banao","5 min mein playlist banao dono ki favorite songs ki","Ek dusre ko horoscope padh k sunao","Dono ek jaisi emoji story banao","Ek purani memory share karo","Dono milke ek fake trailer banao","Voice message bhejo gaana gaake"];
+const truths = ["Sabse embarrassing cheez jo tune kabhi ki ho?","Kisi pe crush hai abhi?","Sabse bada jhooth jo tumne bola ho?","Sabse zyada kisse jealous feel hota hai?","Tumhara sabse bada fear kya hai?"];
+const dares = ["Apna last selfie bhejo without explanation","Ek weird dance move ka video banao","30 sec animal sound bhejo voice note mein","Fake accent mein ek voice note bhejo"];
+const moods = ["😴 Sleepy — chill playlist sunte hain saath mein","⚡ Energetic — video call pe dance-off karte hain","😢 Emotional — ek dusre ko batate hain grateful kis liye hain","🍔 Hungry — same time pe kuch order karte hain","🙄 Annoyed — 2 min rant karo, main sunungi"];
+const compliments = ["Tum jab haso na, poora din bright ho jaata hai ✨","Tumhare jaise dost milna kismat ki baat hai 💕","Tumhari energy hi kaafi hai kisi ka din bana dene ke liye","Tum sabki sunti ho itne dhyan se — rare quality hai"];
+
+function genCode(){
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let c = '';
+  for(let i=0;i<6;i++) c += chars[Math.floor(Math.random()*chars.length)];
+  return c;
+}
+function emptyRoom(){
+  return {
+    players:{p1:null, p2:null}, // each becomes {name, avatar, status}
+    ttt:{board:Array(9).fill(null), turn:'p1', scoreP1:0, scoreP2:0, over:false},
+    feed:[],
+    chat:[]
+  };
+}
+
+async function loadRoom(){
+  try{
+    const snap = await db.ref('rooms/'+roomCode).once('value');
+    return snap.exists() ? snap.val() : null;
+  }catch(e){ console.error('load failed', e); return null; }
+}
+async function saveRoom(data){
+  try{
+    await db.ref('rooms/'+roomCode).set(data);
+  }catch(e){
+    console.error('save failed', e);
+    alert('Save fail hua. Firebase Database rules check karo — read/write allowed hona chahiye.');
+  }
+}
+function myProfile(){ return { name: myName, avatar: myAvatar, status: myStatus }; }
+
+document.getElementById('createRoomBtn').addEventListener('click', async ()=>{
+  myName = document.getElementById('nameInput').value.trim() || 'Player';
+  myStatus = document.getElementById('statusInput').value.trim();
+  roomCode = genCode();
+  const data = emptyRoom();
+  data.players.p1 = myProfile();
+  myRole = 'p1';
+  await saveRoom(data);
+  enterRoom();
+});
+
+document.getElementById('joinRoomBtn').addEventListener('click', async ()=>{
+  myName = document.getElementById('nameInput').value.trim() || 'Player';
+  myStatus = document.getElementById('statusInput').value.trim();
+  const code = document.getElementById('joinCodeInput').value.trim().toUpperCase();
+  if(!code){ alert('Room code daalo pehle'); return; }
+  roomCode = code;
+  let data = await loadRoom();
+  if(!data){ alert('Ye room nahi mila. Code check karo.'); return; }
+  if(!data.players.p1){ data.players.p1 = myProfile(); myRole='p1'; }
+  else if(!data.players.p2 && data.players.p1.name !== myName){ data.players.p2 = myProfile(); myRole='p2'; }
+  else if(data.players.p1.name === myName){ myRole='p1'; data.players.p1 = myProfile(); }
+  else if(data.players.p2 && data.players.p2.name === myName){ myRole='p2'; data.players.p2 = myProfile(); }
+  else { alert('Ye room full hai already 2 logon ke saath.'); return; }
+  await saveRoom(data);
+  enterRoom();
+});
+
+function enterRoom(){
+  document.getElementById('lobby').style.display = 'none';
+  document.getElementById('roomView').style.display = 'block';
+  document.getElementById('roomCodeDisplay').textContent = roomCode;
+  document.getElementById('statusInputEdit').value = myStatus;
+  buildAvatarGrid('avatarGridEdit');
+  refreshAll();
+  pollTimer = setInterval(refreshAll, 2000);
+}
+
+document.getElementById('leaveBtn').addEventListener('click', ()=>{
+  clearInterval(pollTimer);
+  document.getElementById('roomView').style.display = 'none';
+  document.getElementById('lobby').style.display = 'block';
+});
+
+document.getElementById('editProfileToggle').addEventListener('click', ()=>{
+  document.getElementById('editProfileBox').classList.toggle('open');
+});
+document.getElementById('saveProfileBtn').addEventListener('click', async ()=>{
+  myStatus = document.getElementById('statusInputEdit').value.trim();
+  const data = await loadRoom();
+  if(!data) return;
+  data.players[myRole] = myProfile();
+  await saveRoom(data);
+  document.getElementById('editProfileBox').classList.remove('open');
+  renderProfiles(data);
+});
+
+document.querySelectorAll('.tab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('panel-'+tab.dataset.tab).classList.add('active');
+  });
+});
+
+async function refreshAll(){
+  const data = await loadRoom();
+  if(!data) return;
+  renderProfiles(data);
+  renderTTT(data);
+  renderFeed(data);
+  renderChat(data);
+}
+
+/* ---------- PROFILES ---------- */
+function renderProfiles(data){
+  const row = document.getElementById('profileRow');
+  row.innerHTML = '';
+  ['p1','p2'].forEach(role=>{
+    const p = data.players[role];
+    const div = document.createElement('div');
+    div.className = 'profile-card' + (role===myRole ? ' me' : '');
+    if(p){
+      div.innerHTML = `<div class="av">${p.avatar||'🙂'}</div><div class="nm">${p.name}${role===myRole?' (Tum)':''}</div><div class="st">${p.status||''}</div>`;
+    } else {
+      div.innerHTML = `<div class="av">➕</div><div class="nm">Wait ho raha hai...</div>`;
+    }
+    row.appendChild(div);
+  });
+}
+
+/* ---------- TIC TAC TOE ---------- */
+function renderTTT(data){
+  const boardEl = document.getElementById('board');
+  boardEl.innerHTML = '';
+  const isMyTurn = data.ttt.turn === myRole && !data.ttt.over;
+
+  data.ttt.board.forEach((val,i)=>{
+    const c = document.createElement('div');
+    c.className = 'cell' + ((!isMyTurn || val) ? ' disabled' : '');
+    c.textContent = val || '';
+    c.addEventListener('click', ()=> makeMove(i));
+    boardEl.appendChild(c);
+  });
+
+  const p1n = data.players.p1 ? data.players.p1.name : 'P1';
+  const p2n = data.players.p2 ? data.players.p2.name : 'P2';
+  document.getElementById('p1ScoreLabel').textContent = `${p1n} (X): ${data.ttt.scoreP1}`;
+  document.getElementById('p2ScoreLabel').textContent = `${p2n} (O): ${data.ttt.scoreP2}`;
+
+  if(!data.players.p2){
+    document.getElementById('tttStatus').textContent = 'Dusre player ka wait ho raha hai...';
+  } else if(data.ttt.over){
+    document.getElementById('tttStatus').textContent = data.ttt.winnerText || 'Game khatam';
+  } else {
+    document.getElementById('tttStatus').textContent = isMyTurn ? 'Tumhari baari hai!' : `${data.ttt.turn==='p1'?p1n:p2n} soch rahi hai...`;
+  }
+}
+
+const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+function checkWin(board){
+  for(const [a,b,c] of wins){ if(board[a] && board[a]===board[b] && board[a]===board[c]) return board[a]; }
+  return null;
+}
+
+async function makeMove(i){
+  const data = await loadRoom();
+  if(!data || !data.players.p2 || data.ttt.over) return;
+  if(data.ttt.turn !== myRole) return;
+  if(data.ttt.board[i]) return;
+  const symbol = myRole==='p1' ? 'X' : 'O';
+  data.ttt.board[i] = symbol;
+  const winnerSym = checkWin(data.ttt.board);
+  if(winnerSym){
+    data.ttt.over = true;
+    const winnerName = winnerSym==='X' ? data.players.p1.name : data.players.p2.name;
+    data.ttt.winnerText = `🎉 ${winnerName} jeet gayi!`;
+    if(winnerSym==='X') data.ttt.scoreP1++; else data.ttt.scoreP2++;
+  } else if(data.ttt.board.every(c=>c)){
+    data.ttt.over = true;
+    data.ttt.winnerText = 'Draw ho gaya! 🤝';
+  } else {
+    data.ttt.turn = data.ttt.turn==='p1' ? 'p2' : 'p1';
+  }
+  await saveRoom(data);
+  renderTTT(data);
+}
+
+document.getElementById('resetGame').addEventListener('click', async ()=>{
+  const data = await loadRoom();
+  if(!data) return;
+  data.ttt.board = Array(9).fill(null);
+  data.ttt.turn = 'p1';
+  data.ttt.over = false;
+  data.ttt.winnerText = '';
+  await saveRoom(data);
+  renderTTT(data);
+});
+
+/* ---------- ACTIVITY FEED ---------- */
+function renderFeed(data){
+  const list = document.getElementById('feedList');
+  if(!data.feed || data.feed.length===0){
+    list.innerHTML = '<div class="empty-feed">Abhi koi message nahi hai</div>';
+    return;
+  }
+  list.innerHTML = '';
+  data.feed.slice(-40).forEach(m=>{
+    const div = document.createElement('div');
+    div.className = 'feed-msg ' + (m.from === myName ? 'mine' : 'theirs');
+    div.innerHTML = `<div class="sender">${m.avatar||''} ${m.from === myName ? 'Tum' : m.from}</div>${m.text}`;
+    list.appendChild(div);
+  });
+  list.scrollTop = list.scrollHeight;
+}
+
+async function sendToFeed(text){
+  const data = await loadRoom();
+  if(!data) return;
+  if(!data.feed) data.feed = [];
+  data.feed.push({from: myName, avatar: myAvatar, text, ts: Date.now()});
+  if(data.feed.length > 60) data.feed = data.feed.slice(-60);
+  await saveRoom(data);
+  renderFeed(data);
+}
+function randomFrom(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+
+document.getElementById('qWheel').addEventListener('click', ()=> sendToFeed('🎡 Activity: ' + randomFrom(activities)));
+document.getElementById('qTruth').addEventListener('click', ()=> sendToFeed('😇 Truth: ' + randomFrom(truths)));
+document.getElementById('qDare').addEventListener('click', ()=> sendToFeed('😈 Dare: ' + randomFrom(dares)));
+document.getElementById('qMood').addEventListener('click', ()=> sendToFeed('💭 Mood suggestion: ' + randomFrom(moods)));
+document.getElementById('qCompliment').addEventListener('click', ()=> sendToFeed('💌 ' + randomFrom(compliments)));
+document.getElementById('qRefresh').addEventListener('click', refreshAll);
+
+/* ---------- CHAT (text + voice, same stream) ---------- */
+function renderChat(data){
+  const list = document.getElementById('chatList');
+  if(!data.chat || data.chat.length===0){
+    list.innerHTML = '<div class="empty-feed">Abhi koi message nahi hai — hi bolo!</div>';
+    return;
+  }
+  list.innerHTML = '';
+  data.chat.slice(-60).forEach(m=>{
+    const div = document.createElement('div');
+    div.className = 'feed-msg chat-msg ' + (m.from === myName ? 'mine' : 'theirs');
+    const senderLine = `<div class="sender">${m.avatar||''} ${m.from === myName ? 'Tum' : m.from}</div>`;
+    if(m.type === 'voice'){
+      div.innerHTML = senderLine + `<audio controls src="${m.audio}"></audio>`;
+    } else {
+      div.innerHTML = senderLine + m.text;
+    }
+    list.appendChild(div);
+  });
+  list.scrollTop = list.scrollHeight;
+}
+async function sendChat(text){
+  const data = await loadRoom();
+  if(!data) return;
+  if(!data.chat) data.chat = [];
+  data.chat.push({from: myName, avatar: myAvatar, type:'text', text, ts: Date.now()});
+  if(data.chat.length > 80) data.chat = data.chat.slice(-80);
+  await saveRoom(data);
+  renderChat(data);
+}
+async function sendVoiceChat(audioDataUrl){
+  const data = await loadRoom();
+  if(!data) return;
+  if(!data.chat) data.chat = [];
+  data.chat.push({from: myName, avatar: myAvatar, type:'voice', audio: audioDataUrl, ts: Date.now()});
+  if(data.chat.length > 80) data.chat = data.chat.slice(-80);
+  try{
+    await saveRoom(data);
+    renderChat(data);
+  }catch(e){
+    alert('Voice message bhejne mein dikkat aayi — shayad thodi choti recording try karo.');
+  }
+}
+document.getElementById('sendChatBtn').addEventListener('click', ()=>{
+  const val = document.getElementById('chatInput').value.trim();
+  if(!val) return;
+  sendChat(val);
+  document.getElementById('chatInput').value = '';
+});
+document.getElementById('chatInput').addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter'){ document.getElementById('sendChatBtn').click(); }
+});
+
+/* ---------- VOICE NOTE RECORDING ---------- */
+let mediaRecorder = null;
+let audioChunks = [];
+let isRecording = false;
+let recTimeout = null;
+
+async function startRecording(){
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    alert('Ye device/browser voice recording support nahi karta.');
+    return;
+  }
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioChunks = [];
+    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.ondataavailable = e => { if(e.data.size>0) audioChunks.push(e.data); };
+    mediaRecorder.onstop = async ()=>{
+      stream.getTracks().forEach(t=>t.stop());
+      const blob = new Blob(audioChunks, { type: 'audio/webm' });
+      const reader = new FileReader();
+      reader.onloadend = ()=>{
+        sendVoiceChat(reader.result);
+      };
+      reader.readAsDataURL(blob);
+    };
+    mediaRecorder.start();
+    isRecording = true;
+    document.getElementById('micBtn').classList.add('recording');
+    document.getElementById('recIndicator').style.display = 'block';
+    recTimeout = setTimeout(()=>{ if(isRecording) stopRecording(); }, 20000);
+  }catch(err){
+    alert('Microphone access nahi mila. Browser settings mein permission allow karo, ya text message bhejo.');
+  }
+}
+function stopRecording(){
+  if(mediaRecorder && isRecording){
+    mediaRecorder.stop();
+    isRecording = false;
+    clearTimeout(recTimeout);
+    document.getElementById('micBtn').classList.remove('recording');
+    document.getElementById('recIndicator').style.display = 'none';
+  }
+}
+document.getElementById('micBtn').addEventListener('click', ()=>{
+  if(isRecording){ stopRecording(); } else { startRecording(); }
+});
+
+</script>
+</body>
+</html>
+
