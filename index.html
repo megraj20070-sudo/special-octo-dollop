@@ -55,9 +55,9 @@
   .tabs{ display:flex; gap:8px; overflow-x:auto; padding-bottom:6px; margin-bottom:18px; scrollbar-width:none; }
   .tabs::-webkit-scrollbar{ display:none; }
   .tab{
-    flex:0 0 auto; padding:10px 16px; border-radius:999px; background:rgba(255,255,255,0.08);
+    flex:0 0 auto; padding:10px 12px; border-radius:999px; background:rgba(255,255,255,0.08);
     border:2px solid rgba(255,255,255,0.15); color:var(--cream); font-family:'Baloo 2', 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
-    font-weight:600; font-size:0.9rem; cursor:pointer; white-space:nowrap;
+    font-weight:600; font-size:0.8rem; cursor:pointer; white-space:nowrap;
   }
   .tab.active{ background:var(--pink); border-color:var(--pink); color:white; }
   .panel{ display:none; } .panel.active{ display:block; }
@@ -183,7 +183,7 @@
     <div class="tabs">
       <button class="tab active" data-tab="ttt">❌⭕ Tic Tac Toe</button>
       <button class="tab" data-tab="chat">💬 Chat</button>
-      <button class="tab" data-tab="feed">🎉 Activity Feed</button>
+      <button class="tab" data-tab="feed">🎉 Activity</button>
     </div>
 
     <div class="panel active" id="panel-ttt">
@@ -248,7 +248,7 @@ let myName = '';
 let myStatus = '';
 let roomCode = '';
 let myRole = null; // 'p1' or 'p2'
-let pollTimer = null;
+let roomListenerRef = null;
 
 function buildAvatarGrid(containerId, onPick){
   const grid = document.getElementById(containerId);
@@ -340,12 +340,19 @@ function enterRoom(){
   document.getElementById('roomCodeDisplay').textContent = roomCode;
   document.getElementById('statusInputEdit').value = myStatus;
   buildAvatarGrid('avatarGridEdit');
-  refreshAll();
-  pollTimer = setInterval(refreshAll, 2000);
+  roomListenerRef = db.ref('rooms/'+roomCode);
+  roomListenerRef.on('value', (snapshot)=>{
+    const data = snapshot.val();
+    if(!data) return;
+    renderProfiles(data);
+    renderTTT(data);
+    renderFeed(data);
+    renderChat(data);
+  });
 }
 
 document.getElementById('leaveBtn').addEventListener('click', ()=>{
-  clearInterval(pollTimer);
+  if(roomListenerRef) roomListenerRef.off();
   document.getElementById('roomView').style.display = 'none';
   document.getElementById('lobby').style.display = 'block';
 });
