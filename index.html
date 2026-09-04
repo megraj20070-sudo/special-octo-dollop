@@ -284,7 +284,7 @@ function genCode(){
 function emptyRoom(){
   return {
     players:{p1:null, p2:null}, // each becomes {name, avatar, status}
-    ttt:{board:Array(9).fill(null), turn:'p1', scoreP1:0, scoreP2:0, over:false},
+    ttt:{board:Array(9).fill(''), turn:'p1', scoreP1:0, scoreP2:0, over:false},
     feed:[],
     chat:[]
   };
@@ -465,7 +465,7 @@ async function makeMove(i){
 document.getElementById('resetGame').addEventListener('click', async ()=>{
   const data = await loadRoom();
   if(!data) return;
-  data.ttt.board = Array(9).fill(null);
+  data.ttt.board = Array(9).fill('');
   data.ttt.turn = 'p1';
   data.ttt.over = false;
   data.ttt.winnerText = '';
@@ -611,4 +611,3 @@ document.getElementById('micBtn').addEventListener('click', ()=>{
 </script>
 </body>
 </html>
-
