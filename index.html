@@ -80,11 +80,24 @@
   .cell.disabled{ opacity:0.6; cursor:default; }
   .score-row{ display:flex; justify-content:center; gap:24px; margin-top:6px; font-size:0.85rem; color:#E8D9FF; font-weight:600; }
 
-  .quick-actions{ display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:16px; }
+  .quick-actions{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:16px; }
   .qbtn{
     padding:12px 4px; border-radius:12px; border:2px solid rgba(255,255,255,0.14);
-    background:rgba(255,255,255,0.06); color:var(--cream); font-size:0.8rem; font-weight:700;
+    background:rgba(255,255,255,0.06); color:var(--cream); font-size:0.78rem; font-weight:700;
     font-family:'Baloo 2', 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji'; cursor:pointer;
+  }
+
+  /* SPIN WHEEL */
+  .wheel-stage{ position:relative; width:210px; height:210px; margin:6px auto 16px; }
+  #wheel{ width:100%; height:100%; transition: transform 3.5s cubic-bezier(.17,.89,.32,1.13); }
+  .pointer{
+    position:absolute; top:-4px; left:50%; transform:translateX(-50%);
+    width:0; height:0;
+    border-left:12px solid transparent;
+    border-right:12px solid transparent;
+    border-top:18px solid var(--yellow);
+    z-index:5;
+    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.4));
   }
   .feed{
     max-height:280px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; margin-bottom:14px;
@@ -212,15 +225,48 @@
 
     <div class="panel" id="panel-feed">
       <div class="card">
-        <div class="quick-actions">
-          <button class="qbtn" id="qWheel">🎡 Activity</button>
-          <button class="qbtn" id="qTruth">😇 Truth</button>
-          <button class="qbtn" id="qDare">😈 Dare</button>
-          <button class="qbtn" id="qMood">💭 Mood</button>
-          <button class="qbtn" id="qCompliment">💌 Compliment</button>
-          <button class="qbtn" id="qRefresh">🔄 Refresh</button>
+        <div class="mini-tabs">
+          <button class="minitab active" data-mini="wheel">🎡 Wheel</button>
+          <button class="minitab" data-mini="td">😈 Truth/Dare</button>
+          <button class="minitab" data-mini="mood">💭 Mood</button>
+          <button class="minitab" data-mini="compliment">💌 Compliment</button>
         </div>
-        <div class="feed" id="feedList"><div class="empty-feed">Abhi koi message nahi hai</div></div>
+
+        <div class="mini-panel active" id="mini-wheel">
+          <div class="wheel-stage" id="wheelStage">
+            <div class="pointer"></div>
+            <svg id="wheel" viewBox="0 0 200 200"></svg>
+          </div>
+          <button class="btn" id="spinBtn">Spin Karo</button>
+        </div>
+
+        <div class="mini-panel" id="mini-td">
+          <div class="td-choice">
+            <button id="pickTruth">😇 Truth</button>
+            <button id="pickDare">😈 Dare</button>
+          </div>
+          <div class="td-prompt-box" id="tdPromptBox">
+            <div class="td-prompt-text" id="tdPromptText">Truth ya Dare chuno upar se</div>
+            <div class="td-btns">
+              <button class="btn small alt" id="tdNextBtn">🔄 Dobara</button>
+              <button class="btn small" id="tdSendBtn">📢 Bhejo</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="mini-panel" id="mini-mood">
+          <div class="mood-grid" id="moodGridRoom"></div>
+        </div>
+
+        <div class="mini-panel" id="mini-compliment">
+          <div class="compliment-box" id="complimentPreview">Button dabao, ek sweet compliment dekho</div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn alt small" id="complimentRevealBtn">✨ Dikhao</button>
+            <button class="btn small" id="complimentSendBtn" style="display:none;">📢 Bhejo</button>
+          </div>
+        </div>
+
+        <div class="feed" id="feedList" style="margin-top:16px;"><div class="empty-feed">Abhi koi message nahi hai</div></div>
       </div>
     </div>
   </div>
@@ -269,11 +315,18 @@ function buildAvatarGrid(containerId, onPick){
 buildAvatarGrid('avatarGrid');
 
 
-const activities = ["Dono milke ek reel banao","5 min mein playlist banao dono ki favorite songs ki","Ek dusre ko horoscope padh k sunao","Dono ek jaisi emoji story banao","Ek purani memory share karo","Dono milke ek fake trailer banao","Voice message bhejo gaana gaake"];
-const truths = ["Sabse embarrassing cheez jo tune kabhi ki ho?","Kisi pe crush hai abhi?","Sabse bada jhooth jo tumne bola ho?","Sabse zyada kisse jealous feel hota hai?","Tumhara sabse bada fear kya hai?"];
-const dares = ["Apna last selfie bhejo without explanation","Ek weird dance move ka video banao","30 sec animal sound bhejo voice note mein","Fake accent mein ek voice note bhejo"];
-const moods = ["😴 Sleepy — chill playlist sunte hain saath mein","⚡ Energetic — video call pe dance-off karte hain","😢 Emotional — ek dusre ko batate hain grateful kis liye hain","🍔 Hungry — same time pe kuch order karte hain","🙄 Annoyed — 2 min rant karo, main sunungi"];
-const compliments = ["Tum jab haso na, poora din bright ho jaata hai ✨","Tumhare jaise dost milna kismat ki baat hai 💕","Tumhari energy hi kaafi hai kisi ka din bana dene ke liye","Tum sabki sunti ho itne dhyan se — rare quality hai"];
+const activities = ["Dono milke ek reel banao","5 min mein playlist banao dono ki favorite songs ki","Ek dusre ko horoscope padh k sunao","Dono ek jaisi emoji story banao","Ek purani memory share karo","Dono milke ek fake trailer banao","Voice message bhejo gaana gaake","Random meme dhoondo aur bhejo","Ek dusre ka favorite outfit combo suggest karo","2 min ka freestyle dance video banao"];
+const truths = ["Sabse embarrassing cheez jo tune kabhi ki ho?","Kisi pe crush hai abhi?","Sabse bada jhooth jo tumne bola ho?","Sabse zyada kisse jealous feel hota hai?","Tumhara sabse bada fear kya hai?","Agar ek din invisible ho jao toh kya karogi?","Kisi celebrity pe crush hai?","Sabse weird dream jo tumne dekha ho?","Apni sabse purani memory kya hai?","Kisi cheez ke liye sabse zyada pachtava hai?"];
+const dares = ["Apna last selfie bhejo without explanation","Ek weird dance move ka video banao","30 sec animal sound bhejo voice note mein","Fake accent mein ek voice note bhejo","Apna favorite song bina music ke gaake bhejo","3 emoji mein apna mood batao, bina text ke","Apni contact list se random kisi ko 'hi' bhejo","1 min tak sirf whisper mein baat karo"];
+const moods = [
+  {label:'😴 Sleepy', text:'chill playlist sunte hain saath mein'},
+  {label:'⚡ Energetic', text:'video call pe dance-off karte hain'},
+  {label:'😢 Emotional', text:'ek dusre ko batate hain grateful kis liye hain'},
+  {label:'🍔 Hungry', text:'same time pe kuch order karte hain'},
+  {label:'🙄 Annoyed', text:'2 min rant karo, main sunungi'},
+  {label:'😩 Bored', text:'wheel spin karke koi activity try karte hain'}
+];
+const compliments = ["Tum jab haso na, poora din bright ho jaata hai ✨","Tumhare jaise dost milna kismat ki baat hai 💕","Tumhari energy hi kaafi hai kisi ka din bana dene ke liye","Tum sabki sunti ho itne dhyan se — rare quality hai","Tum bina try kiye bhi sabse smart lagti ho","Tumhare saath boring moment bhi best moment ban jaata hai","Tumhara style dekh ke lagta hai tum khud ek trend ho","Tum jitna khud ko samajhti ho, usse zyada special ho"];
 
 function genCode(){
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -501,12 +554,50 @@ async function sendToFeed(text){
 }
 function randomFrom(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
 
-document.getElementById('qWheel').addEventListener('click', ()=> sendToFeed('🎡 Activity: ' + randomFrom(activities)));
 document.getElementById('qTruth').addEventListener('click', ()=> sendToFeed('😇 Truth: ' + randomFrom(truths)));
 document.getElementById('qDare').addEventListener('click', ()=> sendToFeed('😈 Dare: ' + randomFrom(dares)));
 document.getElementById('qMood').addEventListener('click', ()=> sendToFeed('💭 Mood suggestion: ' + randomFrom(moods)));
 document.getElementById('qCompliment').addEventListener('click', ()=> sendToFeed('💌 ' + randomFrom(compliments)));
-document.getElementById('qRefresh').addEventListener('click', refreshAll);
+
+/* ---------- SPIN WHEEL ---------- */
+const wheelColors = ["#FF3E7F","#FFC93C","#0FD9B8","#9B5DE5","#FF6B6B","#4ECDC4","#F7A072"];
+function buildWheel(){
+  const svg = document.getElementById('wheel');
+  const n = activities.length;
+  const cx=100, cy=100, r=95;
+  const slice = 360/n;
+  let html = '';
+  for(let i=0;i<n;i++){
+    const start = i*slice;
+    const end = start+slice;
+    const x1 = cx + r*Math.cos(Math.PI*(start-90)/180);
+    const y1 = cy + r*Math.sin(Math.PI*(start-90)/180);
+    const x2 = cx + r*Math.cos(Math.PI*(end-90)/180);
+    const y2 = cy + r*Math.sin(Math.PI*(end-90)/180);
+    const largeArc = slice>180?1:0;
+    html += `<path d="M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${largeArc},1 ${x2},${y2} Z" fill="${wheelColors[i%wheelColors.length]}" stroke="#2E0F47" stroke-width="1.5"/>`;
+  }
+  svg.innerHTML = html;
+}
+buildWheel();
+
+let wheelRotation = 0;
+let wheelSpinning = false;
+document.getElementById('spinBtn').addEventListener('click', ()=>{
+  if(wheelSpinning) return;
+  wheelSpinning = true;
+  const n = activities.length;
+  const slice = 360/n;
+  const idx = Math.floor(Math.random()*n);
+  const targetAngle = 360*5 + (360 - (idx*slice + slice/2));
+  wheelRotation += targetAngle;
+  const wheel = document.getElementById('wheel');
+  wheel.style.transform = `rotate(${wheelRotation}deg)`;
+  setTimeout(()=>{
+    wheelSpinning = false;
+    sendToFeed('🎡 Wheel: ' + activities[idx]);
+  }, 3600);
+});
 
 /* ---------- CHAT (text + voice, same stream) ---------- */
 function renderChat(data){
