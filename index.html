@@ -177,6 +177,27 @@
   .chat-msg .sender{ font-size:0.7rem; opacity:0.75; margin-bottom:2px; font-weight:700; }
   .chat-msg audio{ width:200px; max-width:100%; height:34px; margin-top:2px; }
   #micBtn.recording{ background:var(--pink); box-shadow:0 5px 0 #C31C5C; animation:pulseRec 1s infinite; }
+
+  /* WIN CELEBRATION */
+  .confetti-overlay{ position:fixed; inset:0; pointer-events:none; z-index:9999; overflow:hidden; }
+  .confetti-piece{ position:absolute; top:-20px; border-radius:2px; opacity:0.95; }
+  @keyframes confettiFall{
+    to{ transform:translateY(115vh) rotate(720deg); opacity:0.25; }
+  }
+  .win-banner{
+    position:fixed; top:32%; left:50%; z-index:10000;
+    transform:translate(-50%,-50%) scale(0.4); opacity:0;
+    background:linear-gradient(135deg, var(--pink), var(--purple));
+    padding:22px 30px; border-radius:24px; text-align:center;
+    box-shadow:0 10px 40px rgba(0,0,0,0.5);
+    transition:transform .45s cubic-bezier(.34,1.56,.64,1), opacity .3s ease;
+    pointer-events:none; max-width:85vw;
+  }
+  .win-banner.show{ transform:translate(-50%,-50%) scale(1); opacity:1; }
+  .win-banner .wb-title{ font-family:'Baloo 2', 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif; font-size:1.5rem; font-weight:800; color:var(--yellow); text-shadow:2px 2px 0 rgba(0,0,0,0.3); }
+  .win-banner .wb-sub{ font-size:0.9rem; color:var(--cream); margin-top:6px; }
+  .board.win-glow .cell{ animation:cellPulse 1.2s ease-in-out infinite; }
+  @keyframes cellPulse{ 0%,100%{ box-shadow:none; } 50%{ box-shadow:0 0 14px 2px var(--yellow); } }
   @keyframes pulseRec{ 0%,100%{opacity:1;} 50%{opacity:0.6;} }
 </style>
 </head>
@@ -214,7 +235,10 @@
   <div id="roomView" style="display:none;">
     <div class="room-banner">
       <span><span class="status-dot"></span>Room: <b id="roomCodeDisplay"></b></span>
-      <button class="btn small alt" id="leaveBtn">Chhodo</button>
+      <span style="display:flex; gap:6px;">
+        <button class="btn small alt" id="muteBtn" style="padding:10px 12px;">🔊</button>
+        <button class="btn small alt" id="leaveBtn">Chhodo</button>
+      </span>
     </div>
 
     <div class="profile-row" id="profileRow"></div>
@@ -322,6 +346,101 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
+/* ---------- SOUND EFFECTS ---------- */
+let audioCtx = null;
+let soundOn = true;
+function getAudioCtx(){
+  if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if(audioCtx.state === 'suspended') audioCtx.resume();
+  return audioCtx;
+}
+function playTone(freq, duration=0.09, type='sine', vol=0.14){
+  if(!soundOn) return;
+  try{
+    const ctx = getAudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.frequency.value = freq;
+    osc.type = type;
+    gain.gain.setValueAtTime(vol, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + duration);
+  }catch(e){}
+}
+function sndMove(){ playTone(520, 0.08, 'square', 0.12); }
+function sndTick(){ playTone(300, 0.035, 'square', 0.07); }
+function sndWin(){
+  playTone(523, 0.12, 'sine', 0.15);
+  setTimeout(()=>playTone(659, 0.12, 'sine', 0.15), 120);
+  setTimeout(()=>playTone(784, 0.18, 'sine', 0.15), 240);
+}
+function sndMsg(){ playTone(700, 0.06, 'sine', 0.08); }
+function spinTicks(totalDurationMs){
+  let elapsed = 0;
+  let interval = 55;
+  function tick(){
+    if(elapsed >= totalDurationMs) return;
+    sndTick();
+    interval = interval * 1.09;
+    elapsed += interval;
+    setTimeout(tick, interval);
+  }
+  tick();
+}
+
+/* ---------- WIN CELEBRATION ---------- */
+const confettiColors = ['#FF3E7F','#FFC93C','#0FD9B8','#9B5DE5','#FF6B6B','#4ECDC4'];
+function fireConfetti(count=70){
+  let layer = document.getElementById('confettiLayer');
+  if(!layer){
+    layer = document.createElement('div');
+    layer.id = 'confettiLayer';
+    layer.className = 'confetti-overlay';
+    document.body.appendChild(layer);
+  }
+  for(let i=0;i<count;i++){
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    const size = 6 + Math.random()*6;
+    piece.style.width = size+'px';
+    piece.style.height = (size*1.6)+'px';
+    piece.style.left = (Math.random()*100)+'vw';
+    piece.style.background = confettiColors[Math.floor(Math.random()*confettiColors.length)];
+    const duration = 2.2 + Math.random()*1.6;
+    const delay = Math.random()*0.4;
+    piece.style.animation = `confettiFall ${duration}s ease-in ${delay}s forwards`;
+    layer.appendChild(piece);
+    setTimeout(()=>piece.remove(), (duration+delay)*1000 + 200);
+  }
+}
+function showWinBanner(title, sub){
+  let banner = document.getElementById('winBanner');
+  if(!banner){
+    banner = document.createElement('div');
+    banner.id = 'winBanner';
+    banner.className = 'win-banner';
+    banner.innerHTML = `<div class="wb-title" id="wbTitle"></div><div class="wb-sub" id="wbSub"></div>`;
+    document.body.appendChild(banner);
+  }
+  document.getElementById('wbTitle').textContent = title;
+  document.getElementById('wbSub').textContent = sub;
+  banner.classList.add('show');
+  setTimeout(()=> banner.classList.remove('show'), 2600);
+}
+function celebrateWin(winnerName, isDraw, isMe){
+  if(isDraw){
+    showWinBanner('🤝 Draw ho gaya!', 'Barabar ki takkar thi');
+  } else {
+    fireConfetti(isMe ? 90 : 55);
+    showWinBanner(isMe ? '🎉 Tum jeet gayi!' : `🎉 ${winnerName} jeet gayi!`, isMe ? 'Shandaar khela!' : 'Agli baar tumhari baari!');
+  }
+  const boardEl = document.getElementById('board');
+  boardEl.classList.add('win-glow');
+  setTimeout(()=> boardEl.classList.remove('win-glow'), 2600);
+}
+
 const AVATARS = ['🐱','🐶','🦊','🐼','🐰','🦄','🐸','🐨','🦁','🐷','🐵','🦋'];
 let myAvatar = AVATARS[0];
 let myName = '';
@@ -349,9 +468,9 @@ function buildAvatarGrid(containerId, onPick){
 buildAvatarGrid('avatarGrid');
 
 
-const activities = ["Dono milke ek reel banao","5 min mein playlist banao dono ki favorite songs ki","Ek dusre ko horoscope padh k sunao","Dono ek jaisi emoji story banao","Ek purani memory share karo","Dono milke ek fake trailer banao","Voice message bhejo gaana gaake","Random meme dhoondo aur bhejo","Ek dusre ka favorite outfit combo suggest karo","2 min ka freestyle dance video banao"];
-const truths = ["Sabse embarrassing cheez jo tune kabhi ki ho?","Kisi pe crush hai abhi?","Sabse bada jhooth jo tumne bola ho?","Sabse zyada kisse jealous feel hota hai?","Tumhara sabse bada fear kya hai?","Agar ek din invisible ho jao toh kya karogi?","Kisi celebrity pe crush hai?","Sabse weird dream jo tumne dekha ho?","Apni sabse purani memory kya hai?","Kisi cheez ke liye sabse zyada pachtava hai?"];
-const dares = ["Apna last selfie bhejo without explanation","Ek weird dance move ka video banao","30 sec animal sound bhejo voice note mein","Fake accent mein ek voice note bhejo","Apna favorite song bina music ke gaake bhejo","3 emoji mein apna mood batao, bina text ke","Apni contact list se random kisi ko 'hi' bhejo","1 min tak sirf whisper mein baat karo"];
+const activities = ["Dono milke ek reel banao","5 min mein playlist banao dono ki favorite songs ki","Ek dusre ko horoscope padh k sunao","Dono ek jaisi emoji story banao","Ek purani memory share karo","Dono milke ek fake trailer banao","Voice message bhejo gaana gaake","Random meme dhoondo aur bhejo","Ek dusre ka favorite outfit combo suggest karo","2 min ka freestyle dance video banao","Ek dusre ko apna 'dream date' plan bana ke sunao","Batao agar tum dono characters hote kisi movie mein, kaunsi love story banti","Dono milke ek 'couple goals' wali photo pose try karo","Ek dusre ka horoscope compatibility check karo","Dono milke decide karo agar tum celebrity couple hote, konsa ship name milta","Ek 'what if we dated' scenario discuss karo just for fun","Dono apna dream wedding theme batao","Ek dusre ke liye perfect partner describe karo","Milke ek love song dedicate karo ek dusre ko","Dono apne 'red flags' aur 'green flags' share karo","Ek romantic movie milke dekhne ka plan banao","Dono apna 'ideal first date' describe karo","Milke decide karo kaunsa on-screen couple sabse cute hai","Ek dusre ko apna 'crush criteria' batao","Dono milke ek love letter template banao (joke mein)","Ek 'if we were in a romcom' scene imagine karo","Milke apna favorite love song playlist banao","Dono decide karo best flirting line kaunsi hai","Ek dusre ka 'type' guess karo bina bataye","Dono apna cutest couple costume idea share karo"];
+const truths = ["Sabse embarrassing cheez jo tune kabhi ki ho?","Kisi pe crush hai abhi?","Sabse bada jhooth jo tumne bola ho?","Sabse zyada kisse jealous feel hota hai?","Tumhara sabse bada fear kya hai?","Agar ek din invisible ho jao toh kya karogi?","Kisi celebrity pe crush hai?","Sabse weird dream jo tumne dekha ho?","Apni sabse purani memory kya hai?","Kisi cheez ke liye sabse zyada pachtava hai?","Sabse pehla crush kaun tha aur kaise pata chala?","Kisi ko flirt karke impress karna easy lagta hai ya mushkil?","Sabse romantic message jo tumne kisi ko bheja ho, kya tha?","Tumhara 'type' kaisa hota hai — kisi mein sabse pehle kya dekhti ho?","Kisi ke liye secretly kuch feelings chhupa rakhi hain kya?","Sabse zyada kis cheez pe embarrassed hoti ho pyaar mein?","Kabhi kisi ko ghar bulaya hai jise crush karti ho?","Sapno mein kaun sabse zyada aata hai?","Ek cheez jo tum kisi ko bolna chahti ho par himmat nahi hoti?","Kisi ke text ka reply dene mein jaan-boojh kar late karti ho kya?","Sabse cute date idea kya hai tumhare liye?","Kya kabhi kisi ke liye jealous hoke kuch kiya hai?","Tumhe kis cheez se pyaar mehsoos hota hai — words, actions ya gifts?","Kisi ke saath first meeting mein hi crush ho gaya tha kya?","Sabse sweet compliment jo tumhe mila ho?","Agar aaj kisi ko propose karna ho, kaise karogi?","Kya tum flirting mein expert ho ya shy ho jaati ho?","Kisi cheez ke liye tum abhi bhi kisi ko miss karti ho?","Ek habit jo tumhe kisi mein bahut cute lagti hai?","Kya kabhi kisi ka naam accidentally kisi aur ko bola hai?","Sabse zyada romantic movie/scene jo tumhe pasand hai?","Tumhe surprise pasand hai ya planned dates?","Kya tum long distance relationship mein believe karti ho?","Ek cheez jo tumhe turant kisi pe crush karwa deti hai?"];
+const dares = ["Apna last selfie bhejo without explanation","Ek weird dance move ka video banao","30 sec animal sound bhejo voice note mein","Fake accent mein ek voice note bhejo","Apna favorite song bina music ke gaake bhejo","3 emoji mein apna mood batao, bina text ke","Apni contact list se random kisi ko 'hi' bhejo","1 min tak sirf whisper mein baat karo","Sabse charming smile wali selfie bhejo","Ek flirty pickup line bolke voice note bhejo","Kisi ko compliment dete hue voice message bhejo","Apne crush ko heart emoji bhejo bina explain kiye","Apni sabse cute laugh wali audio bhejo","10 second ke liye apni best flirty eyes wali selfie bhejo","Ek love song ki 2 lines gaake bhejo","Kisi ko 'you're cute' bolke voice note bhejo","Apna best pickup line try karo dost pe","Ek slow-mo hair flip wala video banao","Apne crush ke baare mein bina naam liye ek clue do","Blowing kiss wali selfie bhejo","Apna 'romantic mood' wala playlist ka ek screenshot bhejo","Apna best 'wink' wala selfie bhejo","Ek cute nickname invent karo apni friend ke liye abhi","Apna sabse confident walk wala video banao","Voice note mein apna 'type' describe karo","Apne crush ko yaad karke ek emoji combo bhejo","Ek romantic dialogue kisi movie ka bolke record karo","Apna 'date night' outfit imagine karke describe karo","Kisi ko compliment karo unki cutest habit ke liye"];
 const moods = [
   {label:'😴 Sleepy', text:'chill playlist sunte hain saath mein'},
   {label:'⚡ Energetic', text:'video call pe dance-off karte hain'},
@@ -360,7 +479,7 @@ const moods = [
   {label:'🙄 Annoyed', text:'2 min rant karo, main sunungi'},
   {label:'😩 Bored', text:'wheel spin karke koi activity try karte hain'}
 ];
-const compliments = ["Tum jab haso na, poora din bright ho jaata hai ✨","Tumhare jaise dost milna kismat ki baat hai 💕","Tumhari energy hi kaafi hai kisi ka din bana dene ke liye","Tum sabki sunti ho itne dhyan se — rare quality hai","Tum bina try kiye bhi sabse smart lagti ho","Tumhare saath boring moment bhi best moment ban jaata hai","Tumhara style dekh ke lagta hai tum khud ek trend ho","Tum jitna khud ko samajhti ho, usse zyada special ho"];
+const compliments = ["Tum jab haso na, poora din bright ho jaata hai ✨","Tumhare jaise dost milna kismat ki baat hai 💕","Tumhari energy hi kaafi hai kisi ka din bana dene ke liye","Tum sabki sunti ho itne dhyan se — rare quality hai","Tum bina try kiye bhi sabse smart lagti ho","Tumhare saath boring moment bhi best moment ban jaata hai","Tumhara style dekh ke lagta hai tum khud ek trend ho","Tum jitna khud ko samajhti ho, usse zyada special ho","Tumhari muskaan dekh ke kisi ka bhi din ban sakta hai 😍","Tumhare eyes mein kuch alag hi magic hai ✨","Jab tum kamre mein aati ho, sab kuch thoda brighter lagta hai","Tum jitni cute lagti ho, utni hi dil se bhi sweet ho 💕","Tumhari awaaz sunke hi mood better ho jaata hai","Tum jitni sweet ho, utni hi strong bhi ho","Tumhare saath time spend karna kabhi bore nahi hota","Tumhari vibe hi kaafi hai kisi ka din banane ke liye","Tum jo bhi pehno, confidence sabse zyada suit karta hai","Tum jitni funny ho, utni hi caring bhi ho","Tumhare paas hone se sab kuch easy lagta hai","Tum genuinely ek rare insaan ho","Tumhari energy contagious hai, sabko accha feel karati hai","Tum jitna khud pe believe karti ho, utna hi impressive hai","Tumhare jaise log kam hi milte hain","Tum apni tareef khud se zyada deserve karti ho","Tumhari kindness sabse pehle notice hoti hai","Tum jitni beautiful ho, utni hi genuine bhi ho","Tumhare saath baat karke hamesha achha lagta hai","Tumhari personality hi tumhara sabse bada charm hai","Tum jo bhi karti ho, dil se karti ho","Tumhare hone se life thodi zyada colorful lagti hai"];
 
 function genCode(){
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -444,6 +563,11 @@ document.getElementById('leaveBtn').addEventListener('click', ()=>{
   document.getElementById('lobby').style.display = 'block';
 });
 
+document.getElementById('muteBtn').addEventListener('click', ()=>{
+  soundOn = !soundOn;
+  document.getElementById('muteBtn').textContent = soundOn ? '🔊' : '🔇';
+});
+
 document.getElementById('editProfileToggle').addEventListener('click', ()=>{
   document.getElementById('editProfileBox').classList.toggle('open');
 });
@@ -493,10 +617,27 @@ function renderProfiles(data){
 }
 
 /* ---------- TIC TAC TOE ---------- */
+let lastFilledCount = null;
+let lastGameOver = false;
 function renderTTT(data){
   const boardEl = document.getElementById('board');
   boardEl.innerHTML = '';
   const isMyTurn = data.ttt.turn === myRole && !data.ttt.over;
+
+  const filledCount = data.ttt.board.filter(c=>c).length;
+  if(lastFilledCount !== null && filledCount > lastFilledCount){
+    sndMove();
+  }
+  lastFilledCount = filledCount;
+  if(data.ttt.over && !lastGameOver){
+    sndWin();
+    const isDraw = (data.ttt.winnerText||'').includes('Draw');
+    const winnerRole = data.ttt.turn;
+    const winnerName = data.players[winnerRole] ? data.players[winnerRole].name : 'Player';
+    const isMe = winnerRole === myRole;
+    celebrateWin(winnerName, isDraw, isMe);
+  }
+  lastGameOver = data.ttt.over;
 
   data.ttt.board.forEach((val,i)=>{
     const c = document.createElement('div');
@@ -624,6 +765,7 @@ document.getElementById('spinBtn').addEventListener('click', ()=>{
   wheelRotation += targetAngle;
   const wheel = document.getElementById('wheel');
   wheel.style.transform = `rotate(${wheelRotation}deg)`;
+  spinTicks(3500);
   setTimeout(()=>{
     wheelSpinning = false;
     sendToFeed('🎡 Wheel: ' + activities[idx]);
@@ -695,9 +837,16 @@ document.getElementById('complimentSendBtn').addEventListener('click', ()=>{
 });
 
 /* ---------- CHAT (text + voice, same stream) ---------- */
+let lastChatCount = null;
 function renderChat(data){
   const list = document.getElementById('chatList');
-  if(!data.chat || data.chat.length===0){
+  const chatArr = data.chat || [];
+  if(lastChatCount !== null && chatArr.length > lastChatCount){
+    const lastMsg = chatArr[chatArr.length-1];
+    if(lastMsg && lastMsg.from !== myName) sndMsg();
+  }
+  lastChatCount = chatArr.length;
+  if(chatArr.length===0){
     list.innerHTML = '<div class="empty-feed">Abhi koi message nahi hai — hi bolo!</div>';
     return;
   }
