@@ -602,19 +602,25 @@ const coupleQuestions = [
   {q:"Agar hum dono ek gaana ban jaaye toh kaunsa mood hoga?", options:["Romantic slow song","Fun upbeat song","Emotional ballad","Dance number"]}
 ];
 
+const ROOM_EXPIRY_MS = 2 * 60 * 60 * 1000; // 2 hours
+
 function genCode(){
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let c = '';
-  for(let i=0;i<6;i++) c += chars[Math.floor(Math.random()*chars.length)];
+  for(let i=0;i<10;i++) c += chars[Math.floor(Math.random()*chars.length)];
   return c;
 }
 function emptyRoom(){
   return {
+    createdAt: Date.now(),
     players:{p1:null, p2:null}, // each becomes {name, avatar, status}
     ttt:{board:Array(9).fill(''), turn:'p1', scoreP1:0, scoreP2:0, over:false},
     feed:[],
     chat:[]
   };
+}
+function isRoomExpired(data){
+  return !!(data && data.createdAt && (Date.now() - data.createdAt) > ROOM_EXPIRY_MS);
 }
 
 async function loadRoom(){
@@ -652,6 +658,11 @@ document.getElementById('joinRoomBtn').addEventListener('click', async ()=>{
   roomCode = code;
   let data = await loadRoom();
   if(!data){ alert('Ye room nahi mila. Code check karo.'); return; }
+  if(isRoomExpired(data)){
+    await db.ref('rooms/'+roomCode).remove();
+    alert('Ye room expire ho chuka hai (2 ghante se zyada purana). Naya room banao.');
+    return;
+  }
   if(!data.players.p1){ data.players.p1 = myProfile(); myRole='p1'; }
   else if(!data.players.p2 && data.players.p1.name !== myName){ data.players.p2 = myProfile(); myRole='p2'; }
   else if(data.players.p1.name === myName){ myRole='p1'; data.players.p1 = myProfile(); }
@@ -670,7 +681,26 @@ function enterRoom(){
   roomListenerRef = db.ref('rooms/'+roomCode);
   roomListenerRef.on('value', (snapshot)=>{
     const data = snapshot.val();
-    if(!data) return;
+    if(!data){
+      if(document.getElementById('roomView').style.display !== 'none'){
+        alert('Room delete ho gaya hai (dusre player ne chhod diya, ya expire ho gaya). Wapas lobby mein bhej rahe hain.');
+        roomListenerRef.off();
+        expiryTimerScheduled = false;
+        document.getElementById('roomView').style.display = 'none';
+        document.getElementById('lobby').style.display = 'block';
+      }
+      return;
+    }
+    if(isRoomExpired(data)){
+      db.ref('rooms/'+roomCode).remove();
+      alert('Ye room 2 ghante se purana ho gaya hai, isliye automatically clean ho gaya.');
+      roomListenerRef.off();
+      expiryTimerScheduled = false;
+      document.getElementById('roomView').style.display = 'none';
+      document.getElementById('lobby').style.display = 'block';
+      return;
+    }
+    scheduleRoomExpiry(data.createdAt);
     renderProfiles(data);
     renderTTT(data);
     renderFeed(data);
@@ -679,8 +709,32 @@ function enterRoom(){
   });
 }
 
-document.getElementById('leaveBtn').addEventListener('click', ()=>{
+let expiryTimerScheduled = false;
+function scheduleRoomExpiry(createdAt){
+  if(expiryTimerScheduled || !createdAt) return;
+  expiryTimerScheduled = true;
+  const remaining = ROOM_EXPIRY_MS - (Date.now() - createdAt);
+  if(remaining <= 0) return;
+  setTimeout(async ()=>{
+    if(document.getElementById('roomView').style.display === 'none') return;
+    try{ await db.ref('rooms/'+roomCode).remove(); }catch(e){}
+    alert('2 ghante poore ho gaye — room automatically clean ho gaya.');
+    if(roomListenerRef) roomListenerRef.off();
+    document.getElementById('roomView').style.display = 'none';
+    document.getElementById('lobby').style.display = 'block';
+  }, remaining);
+}
+
+document.getElementById('leaveBtn').addEventListener('click', async ()=>{
+  const sure = confirm('Room chhodne par saara data (chat, game, activity) dono ke liye delete ho jaayega. Pakka chhodna hai?');
+  if(!sure) return;
+  try{
+    await db.ref('rooms/'+roomCode).remove();
+  }catch(e){
+    console.error('delete failed', e);
+  }
   if(roomListenerRef) roomListenerRef.off();
+  expiryTimerScheduled = false;
   document.getElementById('roomView').style.display = 'none';
   document.getElementById('lobby').style.display = 'block';
 });
