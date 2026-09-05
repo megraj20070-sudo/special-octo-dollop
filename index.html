@@ -99,6 +99,40 @@
     z-index:5;
     filter: drop-shadow(0 2px 3px rgba(0,0,0,0.4));
   }
+
+  /* MINI TABS (inside Activity panel) */
+  .mini-tabs{ display:flex; gap:6px; overflow-x:auto; padding-bottom:6px; margin-bottom:16px; scrollbar-width:none; }
+  .mini-tabs::-webkit-scrollbar{ display:none; }
+  .minitab{
+    flex:0 0 auto; padding:8px 12px; border-radius:999px; background:rgba(255,255,255,0.07);
+    border:2px solid rgba(255,255,255,0.14); color:var(--cream); font-family:'Baloo 2', 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
+    font-weight:600; font-size:0.78rem; cursor:pointer; white-space:nowrap;
+  }
+  .minitab.active{ background:var(--teal); border-color:var(--teal); color:var(--ink); }
+  .mini-panel{ display:none; text-align:center; } .mini-panel.active{ display:block; }
+
+  /* TRUTH OR DARE */
+  .td-choice{ display:flex; gap:12px; margin-bottom:16px; }
+  .td-choice button{
+    flex:1; padding:14px 8px; border-radius:14px; border:2px solid rgba(255,255,255,0.15);
+    background:rgba(255,255,255,0.06); color:var(--cream); font-family:'Baloo 2', 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
+    font-weight:700; font-size:0.95rem; cursor:pointer;
+  }
+  .td-choice button.sel-truth{ background:var(--teal); color:var(--ink); border-color:var(--teal); }
+  .td-choice button.sel-dare{ background:var(--pink); color:white; border-color:var(--pink); }
+  .td-prompt-text{ font-size:1.02rem; font-weight:600; line-height:1.5; min-height:60px; margin-bottom:12px; }
+  .td-btns{ display:flex; gap:10px; }
+
+  /* MOOD GRID */
+  .mood-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+  .mood-btn{
+    padding:14px 8px; border-radius:14px; border:2px solid rgba(255,255,255,0.15);
+    background:rgba(255,255,255,0.06); color:var(--cream); font-family:'Baloo 2', 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
+    font-weight:700; font-size:0.9rem; cursor:pointer;
+  }
+
+  /* COMPLIMENT */
+  .compliment-box{ font-size:1.05rem; font-weight:600; min-height:70px; color:var(--yellow); line-height:1.5; margin-bottom:14px; }
   .feed{
     max-height:280px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; margin-bottom:14px;
   }
@@ -554,10 +588,7 @@ async function sendToFeed(text){
 }
 function randomFrom(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
 
-document.getElementById('qTruth').addEventListener('click', ()=> sendToFeed('😇 Truth: ' + randomFrom(truths)));
-document.getElementById('qDare').addEventListener('click', ()=> sendToFeed('😈 Dare: ' + randomFrom(dares)));
-document.getElementById('qMood').addEventListener('click', ()=> sendToFeed('💭 Mood suggestion: ' + randomFrom(moods)));
-document.getElementById('qCompliment').addEventListener('click', ()=> sendToFeed('💌 ' + randomFrom(compliments)));
+
 
 /* ---------- SPIN WHEEL ---------- */
 const wheelColors = ["#FF3E7F","#FFC93C","#0FD9B8","#9B5DE5","#FF6B6B","#4ECDC4","#F7A072"];
@@ -597,6 +628,70 @@ document.getElementById('spinBtn').addEventListener('click', ()=>{
     wheelSpinning = false;
     sendToFeed('🎡 Wheel: ' + activities[idx]);
   }, 3600);
+});
+
+/* ---------- MINI TABS ---------- */
+document.querySelectorAll('.minitab').forEach(tab=>{
+  tab.addEventListener('click', ()=>{
+    document.querySelectorAll('.minitab').forEach(t=>t.classList.remove('active'));
+    document.querySelectorAll('.mini-panel').forEach(p=>p.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('mini-'+tab.dataset.mini).classList.add('active');
+  });
+});
+
+/* ---------- TRUTH OR DARE PICKER ---------- */
+let tdList = null, tdIndex = 0, tdType = '';
+function selectTD(type){
+  tdType = type;
+  tdList = type==='truth' ? truths : dares;
+  tdIndex = Math.floor(Math.random()*tdList.length);
+  document.getElementById('tdPromptText').textContent = tdList[tdIndex];
+  document.getElementById('pickTruth').classList.toggle('sel-truth', type==='truth');
+  document.getElementById('pickDare').classList.toggle('sel-dare', type==='dare');
+}
+document.getElementById('pickTruth').addEventListener('click', ()=>selectTD('truth'));
+document.getElementById('pickDare').addEventListener('click', ()=>selectTD('dare'));
+document.getElementById('tdNextBtn').addEventListener('click', ()=>{
+  if(!tdList) return;
+  let idx;
+  do{ idx = Math.floor(Math.random()*tdList.length); } while(idx===tdIndex && tdList.length>1);
+  tdIndex = idx;
+  document.getElementById('tdPromptText').textContent = tdList[tdIndex];
+});
+document.getElementById('tdSendBtn').addEventListener('click', ()=>{
+  if(!tdList) return;
+  const icon = tdType==='truth' ? '😇 Truth' : '😈 Dare';
+  sendToFeed(`${icon}: ${tdList[tdIndex]}`);
+});
+
+/* ---------- MOOD GRID ---------- */
+function buildMoodGrid(){
+  const grid = document.getElementById('moodGridRoom');
+  grid.innerHTML = '';
+  moods.forEach(m=>{
+    const btn = document.createElement('button');
+    btn.className = 'mood-btn';
+    btn.textContent = m.label;
+    btn.addEventListener('click', ()=> sendToFeed(`💭 ${m.label}: ${m.text}`));
+    grid.appendChild(btn);
+  });
+}
+buildMoodGrid();
+
+/* ---------- COMPLIMENT REVEAL ---------- */
+let pendingCompliment = null;
+document.getElementById('complimentRevealBtn').addEventListener('click', ()=>{
+  pendingCompliment = randomFrom(compliments);
+  document.getElementById('complimentPreview').textContent = pendingCompliment;
+  document.getElementById('complimentSendBtn').style.display = 'inline-block';
+});
+document.getElementById('complimentSendBtn').addEventListener('click', ()=>{
+  if(!pendingCompliment) return;
+  sendToFeed('💌 ' + pendingCompliment);
+  document.getElementById('complimentSendBtn').style.display = 'none';
+  document.getElementById('complimentPreview').textContent = 'Button dabao, ek sweet compliment dekho';
+  pendingCompliment = null;
 });
 
 /* ---------- CHAT (text + voice, same stream) ---------- */
@@ -702,3 +797,4 @@ document.getElementById('micBtn').addEventListener('click', ()=>{
 </script>
 </body>
 </html>
+
