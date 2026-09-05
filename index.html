@@ -133,6 +133,55 @@
 
   /* COMPLIMENT */
   .compliment-box{ font-size:1.05rem; font-weight:600; min-height:70px; color:var(--yellow); line-height:1.5; margin-bottom:14px; }
+
+  /* FUN ZONE */
+  .fz-mode-choice{ display:flex; gap:14px; margin-bottom:16px; }
+  .fz-mode-btn{
+    flex:1; padding:20px 10px; border-radius:16px; border:2px solid rgba(255,255,255,0.15);
+    background:rgba(255,255,255,0.06); color:var(--cream); font-family:'Baloo 2', 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
+    font-weight:700; font-size:1rem; cursor:pointer; line-height:1.8; text-align:center;
+  }
+  .fz-mode-btn.selected{ border-color:var(--yellow); background:rgba(255,201,60,0.15); }
+  .fz-tagline{ text-align:center; font-size:0.92rem; color:#E8D9FF; margin-bottom:16px; line-height:1.5; }
+
+  .fz-top-row{ display:flex; justify-content:space-between; font-size:0.82rem; color:#E8D9FF; margin-bottom:12px; font-weight:600; }
+  .fz-question-card{
+    background:rgba(255,255,255,0.08); border-radius:16px; padding:20px 16px; text-align:center;
+    font-size:1.05rem; font-weight:700; margin-bottom:16px; min-height:76px; display:flex;
+    align-items:center; justify-content:center; font-family:'Baloo 2', 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
+    color:var(--cream); border:2px solid rgba(255,255,255,0.12);
+  }
+  .theme-couple .fz-question-card{ border-color:rgba(255,62,127,0.45); box-shadow:0 0 16px rgba(255,62,127,0.15); }
+  .theme-bestie .fz-question-card{ border-color:rgba(15,217,184,0.45); box-shadow:0 0 16px rgba(15,217,184,0.15); }
+
+  .fz-options{ display:flex; flex-direction:column; gap:10px; }
+  .fz-option-btn{
+    padding:14px; border-radius:14px; border:2px solid rgba(255,255,255,0.15);
+    background:rgba(255,255,255,0.05); color:var(--cream); font-size:0.92rem; font-weight:600;
+    cursor:pointer; text-align:left; font-family:'Manrope', 'Noto Color Emoji', sans-serif;
+  }
+  .theme-couple .fz-option-btn:hover, .theme-couple .fz-option-btn:active{ border-color:var(--pink); }
+  .theme-bestie .fz-option-btn:hover, .theme-bestie .fz-option-btn:active{ border-color:var(--teal); }
+  .fz-option-btn:disabled{ opacity:0.6; cursor:default; }
+
+  .fz-waiting{ text-align:center; font-weight:700; margin-top:14px; font-family:'Baloo 2', 'Noto Color Emoji', sans-serif; }
+  .theme-couple .fz-waiting{ color:var(--pink); }
+  .theme-bestie .fz-waiting{ color:var(--teal); }
+
+  .fz-reveal-cards{ display:flex; gap:10px; margin-bottom:14px; }
+  .fz-answer-card{ flex:1; background:rgba(255,255,255,0.08); border-radius:14px; padding:14px 10px; text-align:center; font-size:0.85rem; font-weight:600; }
+  .fz-answer-card.match{ background:rgba(15,217,184,0.22); border:2px solid var(--teal); }
+  .theme-couple .fz-answer-card.match{ background:rgba(255,62,127,0.22); border:2px solid var(--pink); }
+  .fz-answer-card.mismatch{ opacity:0.8; border:2px solid rgba(255,255,255,0.1); }
+  .fz-match-text{ text-align:center; font-family:'Baloo 2', 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif; font-weight:800; font-size:1.1rem; margin-bottom:14px; }
+  .fz-match-text.matched{ color:var(--yellow); }
+  .fz-match-text.mismatched{ color:#C9B8E8; }
+
+  .fz-percent{
+    text-align:center; font-family:'Baloo 2', 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
+    font-size:3rem; font-weight:800; color:var(--yellow); text-shadow:2px 2px 0 var(--pink);
+  }
+  .fz-result-msg{ text-align:center; font-size:1.05rem; font-weight:700; margin-top:6px; }
   .feed{
     max-height:280px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; margin-bottom:14px;
   }
@@ -255,6 +304,7 @@
       <button class="tab active" data-tab="ttt">❌⭕ Tic Tac Toe</button>
       <button class="tab" data-tab="chat">💬 Chat</button>
       <button class="tab" data-tab="feed">🎉 Activity</button>
+      <button class="tab" data-tab="funzone">🎯 Fun Zone</button>
     </div>
 
     <div class="panel active" id="panel-ttt">
@@ -325,6 +375,53 @@
         </div>
 
         <div class="feed" id="feedList" style="margin-top:16px;"><div class="empty-feed">Abhi koi message nahi hai</div></div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-funzone">
+      <div class="card" id="funzoneCard">
+
+        <!-- START STATE -->
+        <div id="fzStart">
+          <div class="fz-mode-choice">
+            <button class="fz-mode-btn" id="fzModeBestie" data-mode="bestie">👭<br>Bestie</button>
+            <button class="fz-mode-btn" id="fzModeCouple" data-mode="couple">💑<br>Couple</button>
+          </div>
+          <div class="fz-tagline" id="fzTagline">Mode chuno aur dekho connection kitna strong hai</div>
+          <button class="btn" id="fzStartBtn" disabled>Start Karo</button>
+          <p class="hint" id="fzStartHint">7 rounds • Secret answers • Real-time reveal</p>
+        </div>
+
+        <!-- ROUND STATE -->
+        <div id="fzRound" style="display:none;">
+          <div class="fz-top-row">
+            <span id="fzRoundLabel">Round 1/7</span>
+            <span id="fzScoreLabel">Tum: 0 · Dost: 0</span>
+          </div>
+          <div class="fz-question-card" id="fzQuestionText"></div>
+          <div class="fz-options" id="fzOptions"></div>
+          <div class="fz-waiting" id="fzWaiting" style="display:none;"></div>
+
+          <div class="fz-reveal" id="fzReveal" style="display:none;">
+            <div class="fz-reveal-cards">
+              <div class="fz-answer-card" id="fzMyAnswerCard"></div>
+              <div class="fz-answer-card" id="fzTheirAnswerCard"></div>
+            </div>
+            <div class="fz-match-text" id="fzMatchText"></div>
+            <button class="btn alt" id="fzNextBtn">Next Round</button>
+          </div>
+        </div>
+
+        <!-- RESULT STATE -->
+        <div id="fzResult" style="display:none;">
+          <div class="fz-percent" id="fzPercent">0%</div>
+          <div class="fz-result-msg" id="fzResultMsg"></div>
+          <div class="score-row" style="margin-top:10px;">
+            <span id="fzFinalScores"></span>
+          </div>
+          <button class="btn alt small" id="fzPlayAgainBtn" style="margin-top:16px; width:100%;">Naya Round Khelo</button>
+        </div>
+
       </div>
     </div>
   </div>
@@ -481,6 +578,30 @@ const moods = [
 ];
 const compliments = ["Tum jab haso na, poora din bright ho jaata hai ✨","Tumhare jaise dost milna kismat ki baat hai 💕","Tumhari energy hi kaafi hai kisi ka din bana dene ke liye","Tum sabki sunti ho itne dhyan se — rare quality hai","Tum bina try kiye bhi sabse smart lagti ho","Tumhare saath boring moment bhi best moment ban jaata hai","Tumhara style dekh ke lagta hai tum khud ek trend ho","Tum jitna khud ko samajhti ho, usse zyada special ho","Tumhari muskaan dekh ke kisi ka bhi din ban sakta hai 😍","Tumhare eyes mein kuch alag hi magic hai ✨","Jab tum kamre mein aati ho, sab kuch thoda brighter lagta hai","Tum jitni cute lagti ho, utni hi dil se bhi sweet ho 💕","Tumhari awaaz sunke hi mood better ho jaata hai","Tum jitni sweet ho, utni hi strong bhi ho","Tumhare saath time spend karna kabhi bore nahi hota","Tumhari vibe hi kaafi hai kisi ka din banane ke liye","Tum jo bhi pehno, confidence sabse zyada suit karta hai","Tum jitni funny ho, utni hi caring bhi ho","Tumhare paas hone se sab kuch easy lagta hai","Tum genuinely ek rare insaan ho","Tumhari energy contagious hai, sabko accha feel karati hai","Tum jitna khud pe believe karti ho, utna hi impressive hai","Tumhare jaise log kam hi milte hain","Tum apni tareef khud se zyada deserve karti ho","Tumhari kindness sabse pehle notice hoti hai","Tum jitni beautiful ho, utni hi genuine bhi ho","Tumhare saath baat karke hamesha achha lagta hai","Tumhari personality hi tumhara sabse bada charm hai","Tum jo bhi karti ho, dil se karti ho","Tumhare hone se life thodi zyada colorful lagti hai"];
 
+const bestieQuestions = [
+  {q:"Agar hum dono jungle mein fas jaaye toh kaun pehle paagal ho jayega?", options:["Main","Tum","Dono ek saath","Koi nahi, hum plan bana lenge"]},
+  {q:"Ek dusre ka sabse weird habit kaunsa hai jo humne notice kiya hai?", options:["Baat karte waqt hands move karna","Phone check karte rehna","Zyada sona","Bahut zyada bolna"]},
+  {q:"Agar hum ek dusre ki life mein 1 din ke liye swap ho jaaye toh kya sabse pehle karega/karegi?", options:["Wardrobe explore karungi","Phone check karungi","Sabko surprise dungi","Bas relax karungi"]},
+  {q:"Hamari dosti ko agar ek food se compare karna ho toh kaunsa food banega?", options:["Spicy Chaat","Sweet Gulab Jamun","Cheesy Pizza","Masala Chai"]},
+  {q:"Agar kal subah uthke dekha ki hum dono famous ho gaye hain, toh kis cheez se famous honge?", options:["Funny videos se","Random drama se","Talent se","Bas luck se"]},
+  {q:"Ek dusre ko torture karne ka sabse funny tarika kya hoga?", options:["Bina wajah call karna","Purani baatein yaad dilana","Ignore karna","Embarrassing photo bhejna"]},
+  {q:"Agar hum dono ek reality show mein jaaye toh kaun pehle eliminate ho jayega?", options:["Main","Tum","Dono saath mein","Koi nahi, hum jeetenge"]},
+  {q:"Hamari dosti ka sabse bada 'red flag' kya hai? (hasike batao)", options:["Bahut zyada overthinking","Late reply karna","Zyada drama","Bahut honest hona"]},
+  {q:"Agar ek din sirf ek hi emotion feel kar sakte ho toh kaunsa choose karoge?", options:["Khushi","Excitement","Shanti","Pyaar"]},
+  {q:"Agar hum dono animal ban jaaye toh kaunsa animal banenge?", options:["Cat","Dog","Panda","Fox"]}
+];
+
+const coupleQuestions = [
+  {q:"Agar hum aaj mil sakein toh pehle kya karenge?", options:["Lambi walk pe jaayenge","Coffee date karenge","Bas gale milenge","Poori raat baat karenge"]},
+  {q:"Tumhe mere baare mein sabse zyada kya pasand hai?", options:["Smile","Nature","Baatein karne ka andaz","Caring hona"]},
+  {q:"Hamari next meet-up ka ideal plan kya hona chahiye?", options:["Movie date","Dinner date","Beach trip","Ghar pe chill"]},
+  {q:"Ek emoji jo abhi hamari feeling bataye", options:["❤️","😊","🥰","😌"]},
+  {q:"Tumhe sabse zyada kya miss hota hai?", options:["Voice","Hug","Saath waqt bitana","Baatein"]},
+  {q:"Agar ek din free ho toh hum kya karenge?", options:["Trip pe jaayenge","Ghar pe movie dekhenge","Shopping karenge","Bas baatein karenge"]},
+  {q:"Ek secret wish jo tum mere liye rakhte ho", options:["Hamesha khush raho","Hum jaldi milein","Tumhara sapna poora ho","Bas saath raho"]},
+  {q:"Agar hum dono ek gaana ban jaaye toh kaunsa mood hoga?", options:["Romantic slow song","Fun upbeat song","Emotional ballad","Dance number"]}
+];
+
 function genCode(){
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let c = '';
@@ -554,6 +675,7 @@ function enterRoom(){
     renderTTT(data);
     renderFeed(data);
     renderChat(data);
+    renderFunzone(data);
   });
 }
 
@@ -597,6 +719,7 @@ async function refreshAll(){
   renderTTT(data);
   renderFeed(data);
   renderChat(data);
+  renderFunzone(data);
 }
 
 /* ---------- PROFILES ---------- */
@@ -943,7 +1066,221 @@ document.getElementById('micBtn').addEventListener('click', ()=>{
   if(isRecording){ stopRecording(); } else { startRecording(); }
 });
 
+/* ---------- FUN ZONE (Bestie Sync / Couple Sync) ---------- */
+let fzSelectedMode = null;
+
+document.getElementById('fzModeBestie').addEventListener('click', ()=>{
+  fzSelectedMode = 'bestie';
+  document.getElementById('fzModeBestie').classList.add('selected');
+  document.getElementById('fzModeCouple').classList.remove('selected');
+  document.getElementById('fzTagline').textContent = 'Kitna strong hai tumhara bestie connection?';
+  document.getElementById('fzStartBtn').disabled = false;
+  document.getElementById('fzStartBtn').textContent = 'Start Bestie Sync';
+});
+document.getElementById('fzModeCouple').addEventListener('click', ()=>{
+  fzSelectedMode = 'couple';
+  document.getElementById('fzModeCouple').classList.add('selected');
+  document.getElementById('fzModeBestie').classList.remove('selected');
+  document.getElementById('fzTagline').textContent = 'Kitna strong hai tumhara couple connection?';
+  document.getElementById('fzStartBtn').disabled = false;
+  document.getElementById('fzStartBtn').textContent = 'Start Couple Sync';
+});
+
+function shuffledIndexes(len){
+  const idx = [...Array(len).keys()];
+  for(let i=idx.length-1;i>0;i--){
+    const j = Math.floor(Math.random()*(i+1));
+    [idx[i],idx[j]] = [idx[j],idx[i]];
+  }
+  return idx;
+}
+
+async function startFunzone(mode){
+  const qPool = mode==='couple' ? coupleQuestions : bestieQuestions;
+  const totalRounds = Math.min(7, qPool.length);
+  const qIndexes = shuffledIndexes(qPool.length).slice(0, totalRounds);
+  const data = await loadRoom();
+  if(!data) return;
+  data.funzone = {
+    mode, round:1, totalRounds, qIndexes,
+    answers:{}, scoreP1:0, scoreP2:0,
+    revealed:false, finished:false, history:[]
+  };
+  await saveRoom(data);
+}
+document.getElementById('fzStartBtn').addEventListener('click', ()=>{
+  if(!fzSelectedMode) return;
+  startFunzone(fzSelectedMode);
+});
+
+async function funzoneAnswer(optionIdx){
+  const path = 'rooms/'+roomCode+'/funzone';
+  await db.ref(path).transaction(fz=>{
+    if(!fz) return fz;
+    if(fz.finished) return fz;
+    if(!fz.answers) fz.answers = {};
+    if(fz.answers[myRole] != null) return fz;
+    fz.answers[myRole] = optionIdx;
+    if(fz.answers.p1 != null && fz.answers.p2 != null){
+      const matched = fz.answers.p1 === fz.answers.p2;
+      if(matched){
+        fz.scoreP1 = (fz.scoreP1||0) + 10;
+        fz.scoreP2 = (fz.scoreP2||0) + 10;
+      }
+      fz.revealed = true;
+      fz.lastMatch = matched;
+    }
+    return fz;
+  });
+}
+
+async function funzoneNextRound(){
+  const path = 'rooms/'+roomCode+'/funzone';
+  await db.ref(path).transaction(fz=>{
+    if(!fz) return fz;
+    if(!fz.revealed) return fz;
+    if(fz.round >= fz.totalRounds){
+      fz.finished = true;
+      return fz;
+    }
+    fz.round = (fz.round||1) + 1;
+    fz.answers = {};
+    fz.revealed = false;
+    fz.lastMatch = null;
+    return fz;
+  });
+}
+document.getElementById('fzNextBtn').addEventListener('click', funzoneNextRound);
+
+document.getElementById('fzPlayAgainBtn').addEventListener('click', async ()=>{
+  const data = await loadRoom();
+  if(!data) return;
+  data.funzone = null;
+  await saveRoom(data);
+  fzSelectedMode = null;
+  document.querySelectorAll('.fz-mode-btn').forEach(b=>b.classList.remove('selected'));
+  document.getElementById('fzStartBtn').disabled = true;
+  document.getElementById('fzStartBtn').textContent = 'Start Karo';
+  document.getElementById('fzTagline').textContent = 'Mode chuno aur dekho connection kitna strong hai';
+});
+
+function renderFunzone(data){
+  const card = document.getElementById('funzoneCard');
+  const fz = data.funzone;
+  const startEl = document.getElementById('fzStart');
+  const roundEl = document.getElementById('fzRound');
+  const resultEl = document.getElementById('fzResult');
+
+  if(!fz){
+    startEl.style.display = 'block';
+    roundEl.style.display = 'none';
+    resultEl.style.display = 'none';
+    card.classList.remove('theme-couple','theme-bestie');
+    const bothPresent = !!(data.players.p1 && data.players.p2);
+    if(!bothPresent){
+      document.getElementById('fzStartHint').textContent = 'Dusre player ka wait karo pehle';
+    } else {
+      document.getElementById('fzStartHint').textContent = '7 rounds • Secret answers • Real-time reveal';
+    }
+    return;
+  }
+
+  card.classList.remove('theme-couple','theme-bestie');
+  card.classList.add('theme-' + fz.mode);
+
+  if(fz.finished){
+    startEl.style.display = 'none';
+    roundEl.style.display = 'none';
+    resultEl.style.display = 'block';
+    renderFunzoneResult(fz);
+    return;
+  }
+
+  startEl.style.display = 'none';
+  resultEl.style.display = 'none';
+  roundEl.style.display = 'block';
+  renderFunzoneRound(data, fz);
+}
+
+function renderFunzoneRound(data, fz){
+  document.getElementById('fzRoundLabel').textContent = `Round ${fz.round}/${fz.totalRounds}`;
+  const p1n = data.players.p1 ? data.players.p1.name : 'P1';
+  const p2n = data.players.p2 ? data.players.p2.name : 'P2';
+  const theirRole = myRole==='p1' ? 'p2' : 'p1';
+  const theirName = myRole==='p1' ? p2n : p1n;
+  const myScore = myRole==='p1' ? fz.scoreP1 : fz.scoreP2;
+  const theirScore = myRole==='p1' ? fz.scoreP2 : fz.scoreP1;
+  document.getElementById('fzScoreLabel').textContent = `Tum: ${myScore||0} · ${theirName}: ${theirScore||0}`;
+
+  const qPool = fz.mode==='couple' ? coupleQuestions : bestieQuestions;
+  const q = qPool[fz.qIndexes[fz.round-1]];
+  document.getElementById('fzQuestionText').textContent = q.q;
+
+  const myAnswer = fz.answers ? fz.answers[myRole] : null;
+  const theirAnswer = fz.answers ? fz.answers[theirRole] : null;
+
+  const optionsWrap = document.getElementById('fzOptions');
+  const waitingEl = document.getElementById('fzWaiting');
+  const revealEl = document.getElementById('fzReveal');
+
+  if(!fz.revealed){
+    revealEl.style.display = 'none';
+    if(myAnswer == null){
+      optionsWrap.style.display = 'flex';
+      waitingEl.style.display = 'none';
+      optionsWrap.innerHTML = '';
+      q.options.forEach((opt,i)=>{
+        const btn = document.createElement('button');
+        btn.className = 'fz-option-btn';
+        btn.textContent = opt;
+        btn.addEventListener('click', ()=> funzoneAnswer(i));
+        optionsWrap.appendChild(btn);
+      });
+    } else {
+      optionsWrap.style.display = 'none';
+      waitingEl.style.display = 'block';
+      waitingEl.textContent = `${theirName} ka jawaab wait ho raha hai...`;
+    }
+  } else {
+    optionsWrap.style.display = 'none';
+    waitingEl.style.display = 'none';
+    revealEl.style.display = 'block';
+    const matched = fz.lastMatch;
+    const myCard = document.getElementById('fzMyAnswerCard');
+    const theirCard = document.getElementById('fzTheirAnswerCard');
+    myCard.textContent = 'Tum: ' + (q.options[myAnswer] ?? '-');
+    theirCard.textContent = theirName + ': ' + (q.options[theirAnswer] ?? '-');
+    myCard.className = 'fz-answer-card ' + (matched ? 'match' : 'mismatch');
+    theirCard.className = 'fz-answer-card ' + (matched ? 'match' : 'mismatch');
+    const matchText = document.getElementById('fzMatchText');
+    const heartOrStar = fz.mode==='couple' ? '💖' : '🌟';
+    matchText.textContent = matched ? `${heartOrStar} Match ho gaya! +10 points` : '😅 Arre mismatch!';
+    matchText.className = 'fz-match-text ' + (matched ? 'matched' : 'mismatched');
+    document.getElementById('fzNextBtn').textContent = fz.round >= fz.totalRounds ? 'Result Dekho' : 'Next Round';
+  }
+}
+
+function renderFunzoneResult(fz){
+  const total = fz.totalRounds * 10;
+  const score = fz.scoreP1 || 0;
+  const percent = total > 0 ? Math.round((score/total)*100) : 0;
+  document.getElementById('fzPercent').textContent = percent + '%';
+  let msg;
+  if(fz.mode==='couple'){
+    if(percent>=80) msg = '💞 Perfect Match!';
+    else if(percent>=50) msg = '💗 Solid Connection!';
+    else if(percent>=30) msg = 'Thoda aur baatein karo 😄';
+    else msg = 'Abhi aur jaanna baaki hai 😅';
+  } else {
+    if(percent>=80) msg = '🌟 Ultimate Besties!';
+    else if(percent>=50) msg = '✨ Solid Bestie Vibes!';
+    else if(percent>=30) msg = 'Thoda aur bakchodi karo 😄';
+    else msg = 'Abhi training chahiye 😂';
+  }
+  document.getElementById('fzResultMsg').textContent = msg;
+  document.getElementById('fzFinalScores').textContent = `Final Score: ${score} points`;
+}
+
 </script>
 </body>
 </html>
-
