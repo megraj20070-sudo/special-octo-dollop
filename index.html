@@ -182,6 +182,28 @@
     font-size:3rem; font-weight:800; color:var(--yellow); text-shadow:2px 2px 0 var(--pink);
   }
   .fz-result-msg{ text-align:center; font-size:1.05rem; font-weight:700; margin-top:6px; }
+
+  /* PEN FIGHT */
+  .pf-hero{ text-align:center; font-size:2.4rem; margin-bottom:8px; }
+  .pf-title{
+    text-align:center; font-family:'Baloo 2', 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
+    font-size:1.4rem; font-weight:800; color:var(--yellow); margin-bottom:10px;
+  }
+  .pf-turn-label{
+    text-align:center; font-weight:700; font-size:0.92rem; margin-bottom:10px;
+    color:var(--teal); font-family:'Baloo 2', 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
+  }
+  .pf-table-wrap{
+    width:100%; aspect-ratio:1; margin-bottom:14px; border-radius:16px; overflow:hidden;
+    border:3px solid var(--yellow); box-shadow:0 4px 20px rgba(0,0,0,0.35);
+  }
+  #pfCanvas{ width:100%; height:100%; display:block; touch-action:none; background:linear-gradient(160deg,#3a1f5c,#241243); }
+  .pf-round-result-text{ text-align:center; font-size:1rem; font-weight:600; margin-bottom:16px; line-height:1.6; }
+  .pf-result-title{
+    text-align:center; font-family:'Baloo 2', 'Noto Color Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
+    font-size:1.7rem; font-weight:800; color:var(--yellow); text-shadow:2px 2px 0 var(--pink); margin-bottom:8px;
+  }
+  .pf-result-sub{ text-align:center; font-size:0.95rem; color:#E8D9FF; margin-bottom:6px; }
   .feed{
     max-height:280px; overflow-y:auto; display:flex; flex-direction:column; gap:8px; margin-bottom:14px;
   }
@@ -305,6 +327,7 @@
       <button class="tab" data-tab="chat">💬 Chat</button>
       <button class="tab" data-tab="feed">🎉 Activity</button>
       <button class="tab" data-tab="funzone">🎯 Fun Zone</button>
+      <button class="tab" data-tab="penfight">✏️ Pen Fight</button>
     </div>
 
     <div class="panel active" id="panel-ttt">
@@ -424,8 +447,51 @@
 
       </div>
     </div>
+
+    <div class="panel" id="panel-penfight">
+      <div class="card">
+
+        <!-- START STATE -->
+        <div id="pfStart">
+          <div class="pf-hero">✏️⚔️✏️</div>
+          <div class="pf-title">Pen Fight</div>
+          <p class="hint">Apni pen ko drag karke flick maaro — jiski pen table se bahar gir gayi, wo haara! Best of 3 rounds.</p>
+          <button class="btn" id="pfStartBtn" disabled>Pen Fight Shuru Karo</button>
+        </div>
+
+        <!-- GAME STATE -->
+        <div id="pfGame" style="display:none;">
+          <div class="fz-top-row">
+            <span id="pfRoundLabel">Round 1</span>
+            <span id="pfScoreLabel">Tum: 0 · Dost: 0</span>
+          </div>
+          <div class="pf-turn-label" id="pfTurnLabel">Tumhari baari hai!</div>
+
+          <div class="pf-table-wrap">
+            <canvas id="pfCanvas"></canvas>
+          </div>
+
+          <div id="pfRoundResult" style="display:none;">
+            <div class="pf-round-result-text" id="pfRoundResultText"></div>
+            <button class="btn alt" id="pfNextRoundBtn">Agla Round</button>
+          </div>
+        </div>
+
+        <!-- RESULT STATE -->
+        <div id="pfResult" style="display:none;">
+          <div class="pf-result-title" id="pfResultTitle"></div>
+          <div class="pf-result-sub" id="pfResultSub"></div>
+          <div class="score-row" style="margin-top:10px;">
+            <span id="pfFinalScore"></span>
+          </div>
+          <button class="btn alt small" id="pfPlayAgainBtn" style="margin-top:16px; width:100%;">Phir Se Ladai Karo</button>
+        </div>
+
+      </div>
+    </div>
   </div>
 </div>
+
 
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
@@ -706,6 +772,7 @@ function enterRoom(){
     renderFeed(data);
     renderChat(data);
     renderFunzone(data);
+    renderPenfight(data);
   });
 }
 
@@ -774,6 +841,7 @@ async function refreshAll(){
   renderFeed(data);
   renderChat(data);
   renderFunzone(data);
+  renderPenfight(data);
 }
 
 /* ---------- PROFILES ---------- */
@@ -1335,7 +1403,339 @@ function renderFunzoneResult(fz){
   document.getElementById('fzFinalScores').textContent = `Final Score: ${score} points`;
 }
 
+/* ---------- PEN FIGHT (physics drag & flick) ---------- */
+const PF_CANVAS_W = 300;
+const PF_CANVAS_H = 320;
+const PF_TABLE = { x:14, y:14, w:PF_CANVAS_W-28, h:PF_CANVAS_H-28 };
+const PF_PEN_LEN = 46;
+const PF_PEN_W = 9;
+const PF_FRICTION = 0.975;
+const PF_ANG_FRICTION = 0.94;
+const PF_STOP_THRESHOLD = 0.06;
+const PF_MAX_SPEED = 16;
+const PF_POWER_SCALE = 0.18;
+
+const pfLossMessages = [
+  "Elvish bhai ke saamne kaun bolega? Haar gaya munna 😂",
+  "Pen bhi bola — 'bhai sambhal ke khela karo' 😅",
+  "Ye toh clean sweep tha, koi comeback nahi bacha 💀",
+  "Table pe tumhara pen tha ya paper plane? Udd gaya 😂",
+  "Arre yeh kya tha? Practice thodi zyada karni padegi 😅",
+  "Pen fight mein bhi hard ho gaya scene 😭",
+  "Ekdum clean out of the park! Haar maano ab 😂",
+  "Thoda control se khelo agli baar 😅",
+  "Ye round dost ke naam raha, agla tumhara (shayad) 😏",
+  "Pen udd gaya jaise flight pakadni thi 😂"
+];
+
+let currentPF = null;
+let pfCanvasEl = null, pfCtx = null;
+let pfPens = null;          // local render/physics state: {p1:{x,y,angle}, p2:{x,y,angle}}
+let pfVel = { p1:{vx:0,vy:0,va:0}, p2:{vx:0,vy:0,va:0} };
+let pfIsSimulating = false;
+let pfIsDragging = false;
+let pfDragCurrent = null;
+let pfLoopStarted = false;
+
+function sndPfFlick(){ playTone(260, 0.09, 'sawtooth', 0.13); }
+function sndPfCollision(){ playTone(150, 0.06, 'square', 0.16); }
+function sndPfFallOff(){
+  playTone(420, 0.14, 'sine', 0.15);
+  setTimeout(()=>playTone(220, 0.2, 'sine', 0.15), 110);
+}
+function sndPfRoundWin(){ playTone(700, 0.1, 'sine', 0.12); }
+
+function pfDefaultPens(){
+  return {
+    p1: { x: PF_CANVAS_W/2, y: PF_TABLE.y + PF_TABLE.h - 30, angle: 0 },
+    p2: { x: PF_CANVAS_W/2, y: PF_TABLE.y + 30, angle: Math.PI }
+  };
+}
+
+document.getElementById('pfStartBtn').addEventListener('click', async ()=>{
+  const data = await loadRoom();
+  if(!data) return;
+  data.penfight = {
+    round: 1, scoreP1: 0, scoreP2: 0,
+    turn: 'p1',
+    pens: pfDefaultPens(),
+    roundOver: false, roundResult: null,
+    finished: false, winnerRole: null
+  };
+  await saveRoom(data);
+});
+
+async function pfNextRoundHandler(){
+  const path = 'rooms/'+roomCode+'/penfight';
+  await db.ref(path).transaction(pf=>{
+    if(!pf) return pf;
+    if(!pf.roundOver || pf.finished) return pf;
+    const loser = pf.roundResult ? pf.roundResult.loserRole : 'p1';
+    pf.round = (pf.round||1) + 1;
+    pf.pens = pfDefaultPens();
+    pf.turn = loser;
+    pf.roundOver = false;
+    pf.roundResult = null;
+    return pf;
+  });
+}
+document.getElementById('pfNextRoundBtn').addEventListener('click', pfNextRoundHandler);
+
+document.getElementById('pfPlayAgainBtn').addEventListener('click', async ()=>{
+  const data = await loadRoom();
+  if(!data) return;
+  data.penfight = null;
+  await saveRoom(data);
+});
+
+async function pfFinalizeTurn(fellOffRole){
+  const data = await loadRoom();
+  if(!data || !data.penfight) return;
+  const pf = data.penfight;
+  pf.pens = {
+    p1: { x: pfPens.p1.x, y: pfPens.p1.y, angle: pfPens.p1.angle },
+    p2: { x: pfPens.p2.x, y: pfPens.p2.y, angle: pfPens.p2.angle }
+  };
+  if(fellOffRole){
+    const loserRole = fellOffRole;
+    const winnerThisRound = loserRole==='p1' ? 'p2' : 'p1';
+    if(winnerThisRound==='p1') pf.scoreP1 = (pf.scoreP1||0)+1; else pf.scoreP2 = (pf.scoreP2||0)+1;
+    pf.roundOver = true;
+    pf.roundResult = { loserRole, message: randomFrom(pfLossMessages) };
+    if((pf.scoreP1||0) >= 2 || (pf.scoreP2||0) >= 2){
+      pf.finished = true;
+      pf.winnerRole = (pf.scoreP1||0) > (pf.scoreP2||0) ? 'p1' : 'p2';
+    }
+  } else {
+    pf.turn = pf.turn==='p1' ? 'p2' : 'p1';
+  }
+  data.penfight = pf;
+  await saveRoom(data);
+}
+
+/* ---- Canvas setup & drawing ---- */
+function pfSetupCanvas(){
+  if(pfCanvasEl) return;
+  pfCanvasEl = document.getElementById('pfCanvas');
+  pfCanvasEl.width = PF_CANVAS_W;
+  pfCanvasEl.height = PF_CANVAS_H;
+  pfCtx = pfCanvasEl.getContext('2d');
+
+  pfCanvasEl.addEventListener('pointerdown', pfPointerDown);
+  pfCanvasEl.addEventListener('pointermove', pfPointerMove);
+  pfCanvasEl.addEventListener('pointerup', pfPointerUp);
+  pfCanvasEl.addEventListener('pointercancel', pfPointerUp);
+}
+function pfGetPos(e){
+  const rect = pfCanvasEl.getBoundingClientRect();
+  const scaleX = PF_CANVAS_W / rect.width;
+  const scaleY = PF_CANVAS_H / rect.height;
+  return { x:(e.clientX-rect.left)*scaleX, y:(e.clientY-rect.top)*scaleY };
+}
+function pfCanInteract(){
+  return currentPF && !currentPF.finished && !currentPF.roundOver && currentPF.turn===myRole && !pfIsSimulating;
+}
+function pfPointerDown(e){
+  if(!pfCanInteract() || !pfPens) return;
+  const pos = pfGetPos(e);
+  const myPen = pfPens[myRole];
+  const dist = Math.hypot(pos.x-myPen.x, pos.y-myPen.y);
+  if(dist < 42){
+    pfIsDragging = true;
+    pfDragCurrent = pos;
+    e.preventDefault();
+  }
+}
+function pfPointerMove(e){
+  if(!pfIsDragging) return;
+  pfDragCurrent = pfGetPos(e);
+}
+function pfPointerUp(e){
+  if(!pfIsDragging) return;
+  pfIsDragging = false;
+  const myPen = pfPens[myRole];
+  const pull = { x: myPen.x - pfDragCurrent.x, y: myPen.y - pfDragCurrent.y };
+  let vx = pull.x * PF_POWER_SCALE;
+  let vy = pull.y * PF_POWER_SCALE;
+  const speed = Math.hypot(vx,vy);
+  if(speed > PF_MAX_SPEED){ vx = vx/speed*PF_MAX_SPEED; vy = vy/speed*PF_MAX_SPEED; }
+  if(speed < 1.2){ pfDragCurrent=null; return; } // too weak, ignore as accidental tap
+  pfVel[myRole].vx = vx;
+  pfVel[myRole].vy = vy;
+  pfVel[myRole].va = (Math.random()-0.5) * 0.25 * (speed/PF_MAX_SPEED);
+  pfDragCurrent = null;
+  pfIsSimulating = true;
+  sndPfFlick();
+}
+
+function pfIsOffTable(pen){
+  return pen.x < PF_TABLE.x || pen.x > PF_TABLE.x+PF_TABLE.w || pen.y < PF_TABLE.y || pen.y > PF_TABLE.y+PF_TABLE.h;
+}
+
+function pfStepPhysics(){
+  ['p1','p2'].forEach(r=>{
+    const pen = pfPens[r]; const v = pfVel[r];
+    pen.x += v.vx; pen.y += v.vy; pen.angle += v.va;
+    v.vx *= PF_FRICTION; v.vy *= PF_FRICTION; v.va *= PF_ANG_FRICTION;
+  });
+  // collision (circle approx)
+  const p1 = pfPens.p1, p2 = pfPens.p2;
+  const dx = p2.x-p1.x, dy = p2.y-p1.y;
+  const dist = Math.hypot(dx,dy) || 0.001;
+  const minDist = PF_PEN_LEN*0.55;
+  if(dist < minDist){
+    const nx = dx/dist, ny = dy/dist;
+    const v1 = pfVel.p1, v2 = pfVel.p2;
+    const v1n = v1.vx*nx + v1.vy*ny;
+    const v2n = v2.vx*nx + v2.vy*ny;
+    v1.vx += (v2n-v1n)*nx; v1.vy += (v2n-v1n)*ny;
+    v2.vx += (v1n-v2n)*nx; v2.vy += (v1n-v2n)*ny;
+    const overlap = (minDist-dist)/2;
+    p1.x -= nx*overlap; p1.y -= ny*overlap;
+    p2.x += nx*overlap; p2.y += ny*overlap;
+    v1.va += (Math.random()-0.5)*0.3;
+    v2.va += (Math.random()-0.5)*0.3;
+    sndPfCollision();
+  }
+  const p1Off = pfIsOffTable(p1);
+  const p2Off = pfIsOffTable(p2);
+  if(p1Off || p2Off){
+    pfIsSimulating = false;
+    sndPfFallOff();
+    const fellOff = p1Off && p2Off ? myRole : (p1Off ? 'p1' : 'p2');
+    pfFinalizeTurn(fellOff);
+    return;
+  }
+  const totalSpeed = Math.abs(pfVel.p1.vx)+Math.abs(pfVel.p1.vy)+Math.abs(pfVel.p1.va)
+                    + Math.abs(pfVel.p2.vx)+Math.abs(pfVel.p2.vy)+Math.abs(pfVel.p2.va);
+  if(totalSpeed < PF_STOP_THRESHOLD){
+    pfIsSimulating = false;
+    pfFinalizeTurn(null);
+  }
+}
+
+function pfDrawPen(pen, color, capColor){
+  pfCtx.save();
+  pfCtx.translate(pen.x, pen.y);
+  pfCtx.rotate(pen.angle);
+  pfCtx.fillStyle = color;
+  pfCtx.beginPath();
+  if(pfCtx.roundRect){
+    pfCtx.roundRect(-PF_PEN_LEN/2, -PF_PEN_W/2, PF_PEN_LEN, PF_PEN_W, 4);
+  } else {
+    pfCtx.rect(-PF_PEN_LEN/2, -PF_PEN_W/2, PF_PEN_LEN, PF_PEN_W);
+  }
+  pfCtx.fill();
+  pfCtx.fillStyle = capColor;
+  pfCtx.beginPath();
+  pfCtx.arc(PF_PEN_LEN/2-4, 0, PF_PEN_W/2+1, 0, Math.PI*2);
+  pfCtx.fill();
+  pfCtx.restore();
+}
+function pfDrawFrame(){
+  if(!pfCtx) return;
+  pfCtx.clearRect(0,0,PF_CANVAS_W,PF_CANVAS_H);
+  pfCtx.fillStyle = 'rgba(255,255,255,0.04)';
+  pfCtx.fillRect(PF_TABLE.x, PF_TABLE.y, PF_TABLE.w, PF_TABLE.h);
+  pfCtx.strokeStyle = 'rgba(255,201,60,0.6)';
+  pfCtx.lineWidth = 2;
+  pfCtx.strokeRect(PF_TABLE.x, PF_TABLE.y, PF_TABLE.w, PF_TABLE.h);
+  if(!pfPens) return;
+  pfDrawPen(pfPens.p1, '#0FD9B8', '#0a8f77');
+  pfDrawPen(pfPens.p2, '#FF3E7F', '#c31c5c');
+  if(pfIsDragging && pfDragCurrent){
+    const myPen = pfPens[myRole];
+    pfCtx.setLineDash([5,5]);
+    pfCtx.strokeStyle = 'rgba(255,255,255,0.6)';
+    pfCtx.lineWidth = 2;
+    pfCtx.beginPath();
+    pfCtx.moveTo(myPen.x, myPen.y);
+    pfCtx.lineTo(pfDragCurrent.x, pfDragCurrent.y);
+    pfCtx.stroke();
+    pfCtx.setLineDash([]);
+  }
+}
+
+function pfLoop(){
+  if(pfIsSimulating) pfStepPhysics();
+  pfDrawFrame();
+  requestAnimationFrame(pfLoop);
+}
+
+function renderPenfight(data){
+  currentPF = data.penfight;
+  const startEl = document.getElementById('pfStart');
+  const gameEl = document.getElementById('pfGame');
+  const resultEl = document.getElementById('pfResult');
+
+  if(!currentPF){
+    startEl.style.display = 'block';
+    gameEl.style.display = 'none';
+    resultEl.style.display = 'none';
+    const bothPresent = !!(data.players.p1 && data.players.p2);
+    document.getElementById('pfStartBtn').disabled = !bothPresent;
+    return;
+  }
+
+  pfSetupCanvas();
+  startEl.style.display = 'none';
+
+  if(currentPF.finished){
+    gameEl.style.display = 'none';
+    resultEl.style.display = 'block';
+    renderPenfightResult(data, currentPF);
+    return;
+  }
+
+  resultEl.style.display = 'none';
+  gameEl.style.display = 'block';
+
+  document.getElementById('pfRoundLabel').textContent = `Round ${currentPF.round}`;
+  const myScore = myRole==='p1' ? currentPF.scoreP1 : currentPF.scoreP2;
+  const theirScore = myRole==='p1' ? currentPF.scoreP2 : currentPF.scoreP1;
+  document.getElementById('pfScoreLabel').textContent = `Tum: ${myScore||0} · Dost: ${theirScore||0}`;
+
+  const roundResultEl = document.getElementById('pfRoundResult');
+  if(currentPF.roundOver){
+    roundResultEl.style.display = 'block';
+    document.getElementById('pfTurnLabel').textContent = '';
+    const rr = currentPF.roundResult;
+    let resultLine;
+    if(rr.loserRole === myRole) resultLine = rr.message;
+    else { sndPfRoundWin(); resultLine = '🎉 Is round mein tumne jeeta!'; }
+    document.getElementById('pfRoundResultText').textContent = resultLine;
+  } else {
+    roundResultEl.style.display = 'none';
+    document.getElementById('pfTurnLabel').textContent = currentPF.turn===myRole ? '🎯 Tumhari baari hai — pen khींचo aur chhodo!' : '⏳ Dost ki baari hai...';
+  }
+
+  if(!pfIsSimulating && !pfIsDragging){
+    pfPens = {
+      p1: { x:currentPF.pens.p1.x, y:currentPF.pens.p1.y, angle:currentPF.pens.p1.angle },
+      p2: { x:currentPF.pens.p2.x, y:currentPF.pens.p2.y, angle:currentPF.pens.p2.angle }
+    };
+  }
+  if(!pfLoopStarted){
+    pfLoopStarted = true;
+    pfLoop();
+  }
+}
+
+function renderPenfightResult(data, pf){
+  const iWon = pf.winnerRole === myRole;
+  document.getElementById('pfFinalScore').textContent = `Final: ${pf.scoreP1||0} - ${pf.scoreP2||0}`;
+  if(iWon){
+    fireConfetti(90);
+    showWinBanner('🏆 JEET!', 'Shandaar pen fight khela!');
+    document.getElementById('pfResultTitle').textContent = '🏆 JEET GAYE TUM!';
+    document.getElementById('pfResultSub').textContent = 'Legend ho tum, koi shaq?';
+  } else {
+    document.getElementById('pfResultTitle').textContent = '😂 HAAR GAYA MUNNA!';
+    document.getElementById('pfResultSub').textContent = randomFrom(pfLossMessages);
+  }
+}
+
 </script>
 </body>
 </html>
-
+9
