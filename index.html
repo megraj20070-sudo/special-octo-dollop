@@ -455,7 +455,7 @@
         <div id="pfStart">
           <div class="pf-hero">✏️⚔️✏️</div>
           <div class="pf-title">Pen Fight</div>
-          <p class="hint">Apni pen ko drag karke flick maaro — jiski pen table se bahar gir gayi, wo haara! Best of 3 rounds.</p>
+          <p class="hint">Carrom board hai — deewaron se bounce hoga, sirf corner pockets mein girne se haar hogi. Precision se aim karo! Best of 3 rounds.</p>
           <button class="btn" id="pfStartBtn" disabled>Pen Fight Shuru Karo</button>
         </div>
 
@@ -864,6 +864,7 @@ function renderProfiles(data){
 /* ---------- TIC TAC TOE ---------- */
 let lastFilledCount = null;
 let lastGameOver = false;
+let lastCelebratedBoard = null;
 function renderTTT(data){
   const boardEl = document.getElementById('board');
   boardEl.innerHTML = '';
@@ -874,13 +875,18 @@ function renderTTT(data){
     sndMove();
   }
   lastFilledCount = filledCount;
-  if(data.ttt.over && !lastGameOver){
+  const boardSnapshot = data.ttt.board.join('|');
+  if(data.ttt.over && !lastGameOver && lastCelebratedBoard !== boardSnapshot){
     sndWin();
+    lastCelebratedBoard = boardSnapshot;
     const isDraw = (data.ttt.winnerText||'').includes('Draw');
     const winnerRole = data.ttt.turn;
     const winnerName = data.players[winnerRole] ? data.players[winnerRole].name : 'Player';
     const isMe = winnerRole === myRole;
     celebrateWin(winnerName, isDraw, isMe);
+  }
+  if(!data.ttt.over){
+    lastCelebratedBoard = null;
   }
   lastGameOver = data.ttt.over;
 
@@ -1409,11 +1415,11 @@ const PF_CANVAS_H = 320;
 const PF_TABLE = { x:14, y:14, w:PF_CANVAS_W-28, h:PF_CANVAS_H-28 };
 const PF_PEN_LEN = 46;
 const PF_PEN_W = 9;
-const PF_FRICTION = 0.975;
+const PF_FRICTION = 0.965;
 const PF_ANG_FRICTION = 0.94;
 const PF_STOP_THRESHOLD = 0.06;
-const PF_MAX_SPEED = 16;
-const PF_POWER_SCALE = 0.18;
+const PF_MAX_SPEED = 15;
+const PF_POWER_SCALE = 0.16;
 
 const pfLossMessages = [
   "Elvish bhai ke saamne kaun bolega? Haar gaya munna 😂",
@@ -1568,14 +1574,28 @@ function pfPointerUp(e){
   sndPfFlick();
 }
 
-function pfIsOffTable(pen){
-  return pen.x < PF_TABLE.x || pen.x > PF_TABLE.x+PF_TABLE.w || pen.y < PF_TABLE.y || pen.y > PF_TABLE.y+PF_TABLE.h;
+const PF_POCKET_R = 17;
+function pfPockets(){
+  return [
+    { x: PF_TABLE.x, y: PF_TABLE.y },
+    { x: PF_TABLE.x+PF_TABLE.w, y: PF_TABLE.y },
+    { x: PF_TABLE.x, y: PF_TABLE.y+PF_TABLE.h },
+    { x: PF_TABLE.x+PF_TABLE.w, y: PF_TABLE.y+PF_TABLE.h }
+  ];
+}
+function pfIsInPocket(pen){
+  return pfPockets().some(p => Math.hypot(pen.x-p.x, pen.y-p.y) < PF_POCKET_R);
 }
 
 function pfStepPhysics(){
   ['p1','p2'].forEach(r=>{
     const pen = pfPens[r]; const v = pfVel[r];
     pen.x += v.vx; pen.y += v.vy; pen.angle += v.va;
+    // cushion bounce — pen rebounds off table walls instead of instantly falling off
+    if(pen.x < PF_TABLE.x){ pen.x = PF_TABLE.x; v.vx = -v.vx*0.68; }
+    if(pen.x > PF_TABLE.x+PF_TABLE.w){ pen.x = PF_TABLE.x+PF_TABLE.w; v.vx = -v.vx*0.68; }
+    if(pen.y < PF_TABLE.y){ pen.y = PF_TABLE.y; v.vy = -v.vy*0.68; }
+    if(pen.y > PF_TABLE.y+PF_TABLE.h){ pen.y = PF_TABLE.y+PF_TABLE.h; v.vy = -v.vy*0.68; }
     v.vx *= PF_FRICTION; v.vy *= PF_FRICTION; v.va *= PF_ANG_FRICTION;
   });
   // collision (circle approx)
@@ -1597,8 +1617,8 @@ function pfStepPhysics(){
     v2.va += (Math.random()-0.5)*0.3;
     sndPfCollision();
   }
-  const p1Off = pfIsOffTable(p1);
-  const p2Off = pfIsOffTable(p2);
+  const p1Off = pfIsInPocket(p1);
+  const p2Off = pfIsInPocket(p2);
   if(p1Off || p2Off){
     pfIsSimulating = false;
     sndPfFallOff();
@@ -1635,11 +1655,37 @@ function pfDrawPen(pen, color, capColor){
 function pfDrawFrame(){
   if(!pfCtx) return;
   pfCtx.clearRect(0,0,PF_CANVAS_W,PF_CANVAS_H);
-  pfCtx.fillStyle = 'rgba(255,255,255,0.04)';
+  // wood-ish board base
+  const grad = pfCtx.createLinearGradient(PF_TABLE.x, PF_TABLE.y, PF_TABLE.x+PF_TABLE.w, PF_TABLE.y+PF_TABLE.h);
+  grad.addColorStop(0, '#3a1f5c');
+  grad.addColorStop(1, '#241243');
+  pfCtx.fillStyle = grad;
   pfCtx.fillRect(PF_TABLE.x, PF_TABLE.y, PF_TABLE.w, PF_TABLE.h);
+  // decorative diagonals + center circle (carrom-style)
+  pfCtx.strokeStyle = 'rgba(255,255,255,0.08)';
+  pfCtx.lineWidth = 1;
+  pfCtx.beginPath();
+  pfCtx.moveTo(PF_TABLE.x, PF_TABLE.y); pfCtx.lineTo(PF_TABLE.x+PF_TABLE.w, PF_TABLE.y+PF_TABLE.h);
+  pfCtx.moveTo(PF_TABLE.x+PF_TABLE.w, PF_TABLE.y); pfCtx.lineTo(PF_TABLE.x, PF_TABLE.y+PF_TABLE.h);
+  pfCtx.stroke();
+  const cx = PF_TABLE.x+PF_TABLE.w/2, cy = PF_TABLE.y+PF_TABLE.h/2;
+  pfCtx.beginPath();
+  pfCtx.arc(cx, cy, 30, 0, Math.PI*2);
+  pfCtx.stroke();
+  // cushion border
   pfCtx.strokeStyle = 'rgba(255,201,60,0.6)';
-  pfCtx.lineWidth = 2;
+  pfCtx.lineWidth = 3;
   pfCtx.strokeRect(PF_TABLE.x, PF_TABLE.y, PF_TABLE.w, PF_TABLE.h);
+  // corner pockets
+  pfPockets().forEach(p=>{
+    pfCtx.fillStyle = '#0a0714';
+    pfCtx.beginPath();
+    pfCtx.arc(p.x, p.y, PF_POCKET_R, 0, Math.PI*2);
+    pfCtx.fill();
+    pfCtx.strokeStyle = 'rgba(255,201,60,0.5)';
+    pfCtx.lineWidth = 1.5;
+    pfCtx.stroke();
+  });
   if(!pfPens) return;
   pfDrawPen(pfPens.p1, '#0FD9B8', '#0a8f77');
   pfDrawPen(pfPens.p2, '#FF3E7F', '#c31c5c');
@@ -1738,4 +1784,3 @@ function renderPenfightResult(data, pf){
 </script>
 </body>
 </html>
-9
