@@ -1602,7 +1602,7 @@ function pfStepPhysics(){
   const p1 = pfPens.p1, p2 = pfPens.p2;
   const dx = p2.x-p1.x, dy = p2.y-p1.y;
   const dist = Math.hypot(dx,dy) || 0.001;
-  const minDist = PF_PEN_LEN*0.55;
+  const minDist = PF_PEN_LEN*0.88;
   if(dist < minDist){
     const nx = dx/dist, ny = dy/dist;
     const v1 = pfVel.p1, v2 = pfVel.p2;
@@ -1784,3 +1784,4 @@ function renderPenfightResult(data, pf){
 </script>
 </body>
 </html>
+
